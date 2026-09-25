@@ -10,7 +10,7 @@ import time as t
 from telegram import InputMediaPhoto
 import requests
 import string
-from Script import script
+from Script import script, get_random_message
 from datetime import datetime, timedelta, date, time
 from pyrogram import Client, filters, enums
 from pyrogram.errors import ChatAdminRequired, FloodWait
@@ -166,7 +166,7 @@ async def start(client, message):
                 settings = await get_settings(grp_id)         
                 verify_id_info = await db.get_verify_id_info(user_id, verify_id)
                 if not verify_id_info or verify_id_info["verified"]:
-                    await message.reply("<b>ʟɪɴᴋ ᴇxᴘɪʀᴇᴅ ᴛʀʏ ᴀɢᴀɪɴ...</b>")
+                    await message.reply(get_random_message("link_expired"))
                     return
                 
                 ist_timezone = pytz.timezone('Asia/Kolkata')
@@ -228,7 +228,7 @@ async def start(client, message):
                         btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start=files_{grp_id}_{file_id}")])
                 await client.send_message(
                     chat_id=message.from_user.id,
-                    text=script.FSUB_TXT.format(message.from_user.mention),
+                    text=f'<i><b>{message.from_user.mention}, {get_random_message("force_subscribe")}</b></i>',
                     reply_markup=InlineKeyboardMarkup(btn),
                     parse_mode=enums.ParseMode.HTML
                 )
@@ -248,7 +248,7 @@ async def start(client, message):
                         btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start=files_{grp_id}_{file_id}")])
                 await client.send_message(
                     chat_id=message.from_user.id,
-                    text=script.FSUB_TXT.format(message.from_user.mention),
+                    text=f'<i><b>{message.from_user.mention}, {get_random_message("force_subscribe")}</b></i>',
                     reply_markup=InlineKeyboardMarkup(btn),
                     parse_mode=enums.ParseMode.HTML
                 )
@@ -329,7 +329,7 @@ async def start(client, message):
                                        InlineKeyboardButton('✨ Rᴇᴍᴏᴠᴇ Lɪᴍɪᴛᴇ ✨', callback_data=f'premium_info')
                                       ]]
                             reply_markup = InlineKeyboardMarkup(buttons)
-                            return await message.reply_text(script.BUTTON_LIMIT, 
+                            return await message.reply_text(get_random_message("button_limit"), 
                             reply_markup=reply_markup)
                 button = [[
                     InlineKeyboardButton("🖥️ ᴡᴀᴛᴄʜ / ᴅᴏᴡɴʟᴏᴀᴅ 📥", callback_data=f"streaming#{file_id}#{grp_id}")
@@ -365,7 +365,7 @@ async def start(client, message):
                                        InlineKeyboardButton('✨ Rᴇᴍᴏᴠᴇ Lɪᴍɪᴛᴇ ✨', callback_data=f'premium_info')
                                       ]]
                             reply_markup = InlineKeyboardMarkup(buttons)
-                            return await message.reply_text(script.FILE_LIMIT,
+                            return await message.reply_text(get_random_message("file_limit"),
                             reply_markup=reply_markup)
                 button = [[
                     InlineKeyboardButton("🖥️ ᴡᴀᴛᴄʜ / ᴅᴏᴡɴʟᴏᴀᴅ 📥", callback_data=f"streaming#{file_id}#{grp_id}")
@@ -412,7 +412,7 @@ async def start(client, message):
                                InlineKeyboardButton('✨ Rᴇᴍᴏᴠᴇ Lɪᴍɪᴛᴇ ✨', callback_data=f'premium_info')
                               ]]
                     reply_markup = InlineKeyboardMarkup(buttons)
-                    return await message.reply_text(script.FILE_LIMIT,
+                    return await message.reply_text(get_random_message("file_limit"),
                     reply_markup=reply_markup)
         button = [[
             InlineKeyboardButton("🖥️ ᴡᴀᴛᴄʜ / ᴅᴏᴡɴʟᴏᴀᴅ 📥", callback_data=f"streaming#{file_id}#{grp_id}")
