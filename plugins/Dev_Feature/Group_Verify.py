@@ -5,6 +5,7 @@ from database.users_chats_db import db
 from utils import temp
 from info import ADMINS, GROUP_VERIFY_LOGS
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from Script import get_random_message
 
 
 @Client.on_callback_query(filters.regex(r"^verify_group_"))
@@ -18,7 +19,7 @@ async def verify_group_callback(client, query):
     total = await client.get_chat_members_count(chat_id)
     
     if not group_info:
-        await query.answer("ɢʀᴏᴜᴘ ɴᴏᴛ ғᴏᴜɴᴅ!", show_alert=True)
+        await query.answer(get_random_message("group_not_found"), show_alert=True)
         return
     if group_info.get('grp_link'):
         group_link = group_info['grp_link']
@@ -35,7 +36,7 @@ async def verify_group_callback(client, query):
     if await db.rejected_group(chat_id):
         await db.un_rejected(chat_id)
     await db.verify_group(chat_id) 
-    await query.answer("ᴛʜᴇ ɢʀᴏᴜᴘ ʜᴀs ʙᴇᴇɴ ᴠᴇʀɪғɪᴇᴅ ✅", show_alert=True)
+    await query.answer(get_random_message("group_verified"), show_alert=True)
 
     await query.message.edit_text(
         f"𝑩𝒐𝒕: {temp.U_NAME}\n𝑮𝒓𝒐𝒖𝒑: <a href='{group_link}'>{group_title}</a>\n𝑰𝑫: {chat_id}\n𝑴𝒆𝒎𝒃𝒆𝒓𝒔: {total}\n𝑼𝒔𝒆𝒓: {user.mention}\n\nGʀᴏᴜᴘ Is Vᴇʀɪғɪᴇᴅ. ✅",
@@ -57,7 +58,7 @@ async def rejected_group_callback(client, query):
     group_title = group_info.get('title', 'Unknown Group')
     total = await client.get_chat_members_count(chat_id)
     if not group_info:
-        await query.answer("ɢʀᴏᴜᴘ ɴᴏᴛ ғᴏᴜɴᴅ!", show_alert=True)
+        await query.answer(get_random_message("group_not_found"), show_alert=True)
         return
     if group_info.get('grp_link'):
         group_link = group_info['grp_link']
@@ -72,7 +73,7 @@ async def rejected_group_callback(client, query):
             except Exception as e:
                 group_link = "No link available"
     await db.reject_group(chat_id)
-    await query.answer("ᴛʜᴇ ɢʀᴏᴜᴘ ʜᴀs ʙᴇᴇɴ ʀᴇᴊᴇᴄᴛᴇᴅ ❌", show_alert=True)
+    await query.answer(get_random_message("group_rejected"), show_alert=True)
 
     await query.message.edit_text(f"𝑩𝒐𝒕: {temp.U_NAME}\n𝑮𝒓𝒐𝒖𝒑: <a href={group_link}>{group_title}</a>\n𝑰𝑫: {chat_id}\n𝑴𝒆𝒎𝒃𝒆𝒓𝒔: {total}\n𝑼𝒔𝒆𝒓: {user.mention}</b>\n\nRᴇᴊᴇᴄᴛᴇᴅ Gʀᴏᴜᴘ ❌", reply_markup=InlineKeyboardMarkup(
         [[InlineKeyboardButton("Tᴀᴘ Tᴏ Vᴇʀɪғʏ ✅", callback_data=f"verify_group_{chat_id}")]]
