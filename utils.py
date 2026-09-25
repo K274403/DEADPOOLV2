@@ -8,7 +8,7 @@ import asyncio
 from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram import enums
 from typing import Union
-from Script import script
+from Script import script, get_random_message
 import pytz
 import random 
 from random import choice
@@ -421,5 +421,5 @@ async def get_text(settings, remaining_seconds, files, query, total_results, sea
                 cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>📁 {get_size(file.file_size)} ▷ {file.file_name}\n\n</a></b>"
         return cap
     except Exception as e:
-        await query.answer(f"{e}", show_alert=True)
+        await query.answer(get_random_message("error", e), show_alert=True)
         return cap
