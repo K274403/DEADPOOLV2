@@ -1,3 +1,251 @@
+import random
+
+
+_NOTIFICATION_LAST_USED = {}
+
+
+NOTIFICATION_MESSAGES = {
+    "not_your_file": [
+        "{}, ye movie request tumhari nahi hai 😏",
+        "Nice try 😉 ye wali file kisi aur ki request hai.",
+        "Arre naughty 😈 dusre ki file pe nazar?",
+        "Hmm 😌 ye request tumhare naam ki nahi hai.",
+        "Oops cutie ❤️ is file ke liye apni request use karo.",
+        "Pakde gaye 😏 ye movie request tumhari nahi hai.",
+    ],
+    "file_not_found": [
+        "Aww 😏 ye file toh sharma ke gayab ho gayi.",
+        "Uff 😉 ye wali file mili hi nahi, cutie.",
+        "Hmm 😌 file kahaan chhup gayi?",
+        "Oops 😈 ye movie hide-and-seek khel rahi hai.",
+        "Sorry sweetheart ❤️ ye file nahi mili.",
+        "Nice try 😏 is baar file haath nahi aayi.",
+    ],
+    "premium_required": [
+        "Ye wali movie VIP hai jaan 😏 Premium chahiye 🔐",
+        "Hmm 😉 ads-free magic sirf Premium ke liye hai.",
+        "Nice try cutie 😈 VIP access unlock karo.",
+        "Ye file thodi special treatment maang rahi hai 😌🔐",
+        "Premium ke bina ye secret door nahi khulega 😉",
+        "Jaan, is feature ko Premium wali attention chahiye 😏",
+    ],
+    "error": [
+        "Uff 😮‍💨 thoda technical nakhra aa gaya:\n{}",
+        "Aww 😅 system ne thodi sharaarat kar di:\n{}",
+        "Oops cutie 😈 ek temporary glitch mil gaya:\n{}",
+        "Hmm 😌 kuch technical gadbad hui:\n{}",
+        "Arre baby 😉 bot ko chhota sa error mila:\n{}",
+    ],
+    "select_language": [
+        "Cutie 😉 neeche se koi language choose karo.",
+        "Hmm 😏 movie ki language pick karo, sweetheart.",
+        "Aww 😌 ek language select kar do na.",
+        "Nice try 😈 pehle apni language choose karo.",
+        "Baby ❤️ language button dabao, phir movie milegi.",
+        "Uff 😉 bas language select karni hai, easy peasy.",
+    ],
+    "select_quality": [
+        "Jaan 😏 neeche se koi quality choose karo.",
+        "Hmm 😉 apni favourite quality pick karo, cutie.",
+        "Aww 😌 movie ki quality select kar do.",
+        "Nice try 😈 pehle quality choose karo.",
+        "Baby ❤️ quality button tumhara wait kar raha hai.",
+        "Uff 😉 HD ya jo pasand ho, select karo.",
+    ],
+    "select_season": [
+        "Cutie 😏 pehle season choose karo.",
+        "Hmm 😉 kaunsa season chahiye, sweetheart?",
+        "Aww 😌 season select karo, phir next scene.",
+        "Nice try 😈 neeche se season pick karo.",
+        "Baby ❤️ apna season choose kar lo.",
+        "Uff 😉 season button ko ignore mat karo.",
+    ],
+    "select_episode": [
+        "Jaan 😏 pehle episode choose karo.",
+        "Hmm 😉 kaunsa episode dekhna hai, cutie?",
+        "Aww 😌 episode select karo, movie mood on.",
+        "Nice try 😈 neeche se episode pick karo.",
+        "Baby ❤️ apna episode choose kar lo.",
+        "Uff 😉 episode button tumhara wait kar raha hai.",
+    ],
+    "unlock_bot": [
+        "Aww 😏 pehle bot unlock karo, phir movie milegi.",
+        "Hmm 😉 bot ko unlock kar do, cutie.",
+        "Uff 😮‍💨 pehle unlock, phir full movie vibes.",
+        "Nice try 😈 bot unlock karo sweetheart.",
+        "Baby ❤️ unlock karte hi movie journey start.",
+        "Cutie 😌 ek unlock tap aur kaam done.",
+    ],
+    "access_denied": [
+        "Oops 😏 ye action tumhare access mein nahi hai.",
+        "Hmm 😉 permission ke bina ye door nahi khulega.",
+        "Aww 😌 is option ke liye access chahiye.",
+        "Nice try 😈 tumhe abhi permission nahi hai.",
+        "Cutie ❤️ ye setting authorized users ke liye hai.",
+        "Uff 😉 access denied, sweetheart.",
+    ],
+    "admin_only": [
+        "Oops 😏 ye corner sirf bot admins ke liye hai.",
+        "Hmm 😉 admin access chahiye, cutie.",
+        "Nice try 😈 ye button VIP admins ke liye reserved hai.",
+        "Aww 😌 sirf bot admin ye kaam kar sakta hai.",
+        "Uff 😉 admin zone hai, sweetheart.",
+        "Baby ❤️ ye option abhi admins only hai.",
+    ],
+    "searching": [
+        "Aww 😏 tumhari movie dhoond rahi hoon... 🔍",
+        "Hmm 😉 database mein tumhari movie search ho rahi hai.",
+        "Uff 😮‍💨 movie hunt on hai, cutie... 🔍",
+        "Nice try 😈 files ko tumhare liye scan kar rahi hoon.",
+        "Baby 😌 thoda wait, movie ko pakad rahi hoon.",
+        "Cutie ❤️ search chal rahi hai... ek sec.",
+    ],
+    "generic": [
+        "Hmm 😏 button toh daba diya, cutie.",
+        "Aww 😉 nice try, sweetheart.",
+        "Uff 😮‍💨 thoda movie magic aur.",
+        "Hehe 😈 kuch dekhne layak dhoond rahe ho?",
+        "Okay cutie 😌 next move karo.",
+        "Baby ❤️ main yahin hoon, try karo.",
+    ],
+    "referral_points": [
+        "Aww 😏 tumhare paas {} referral points hain.",
+        "Hmm 😉 sweetheart, balance hai {} referral points.",
+        "Nice 😌 tumne {} referral points collect kiye hain.",
+        "Uff 😈 total {} referral points, cutie.",
+        "Baby ❤️ tumhara referral score {} points hai.",
+        "Cutie 😉 abhi tumhare {} referral points hain.",
+    ],
+    "checking_database": [
+        "Aww 😏 database mein check kar rahi hoon...",
+        "Hmm 😉 files database mein dekh rahi hoon.",
+        "Uff 😮‍💨 database scan ho raha hai, cutie...",
+        "Nice try 😈 records check kar rahi hoon...",
+        "Baby 😌 database ko ek quick look de rahi hoon.",
+        "Cutie ❤️ files verify kar rahi hoon...",
+    ],
+    "reset_success": [
+        "Aww 😏 settings reset ho gayi, cutie.",
+        "Done 😉 group settings fresh kar di gayi hain.",
+        "Hmm 😌 reset complete, sweetheart.",
+        "Nice 😈 settings ka makeover ho gaya.",
+        "Uff 😉 reset successful, baby.",
+        "Cutie ❤️ settings neatly reset ho gayi.",
+    ],
+    "index_cancel": [
+        "Aww 😌 indexing cancel kar di gayi.",
+        "Hmm 😉 indexing ruk gayi, cutie.",
+        "Uff 😮‍💨 indexing ko pause kar diya.",
+        "Okay 😏 indexing cancel ho gayi.",
+        "Nice try 😈 indexing stop kar di.",
+        "Baby ❤️ indexing cancel ho gayi.",
+    ],
+    "index_wait": [
+        "Uff 😮‍💨 pehle wala process chal raha hai, thoda wait.",
+        "Hmm 😉 ek indexing already busy hai, cutie.",
+        "Aww 😌 current process finish hone do.",
+        "Nice try 😏 pehle wali indexing ko complete hone do.",
+        "Baby ❤️ thoda wait, process already running hai.",
+        "Uff 😉 queue mein ho, sweetheart.",
+    ],
+    "index_processing": [
+        "Aww 😏 indexing start ho rahi hai... ⏳",
+        "Hmm 😉 files process kar rahi hoon, cutie.",
+        "Uff 😮‍💨 indexing in progress...",
+        "Nice try 😈 database mein files set kar rahi hoon.",
+        "Baby 😌 processing start ho gayi.",
+        "Cutie ❤️ indexing ka kaam shuru hai.",
+    ],
+    "group_not_found": [
+        "Aww 😕 ye group toh mil hi nahi raha.",
+        "Hmm 😉 group kahaan gaya, cutie?",
+        "Uff 😮‍💨 requested group nahi mila.",
+        "Oops 😈 ye group database mein nahi mila.",
+        "Sorry sweetheart ❤️ group not found.",
+        "Nice try 😏 is group ka record nahi mila.",
+    ],
+    "group_verified": [
+        "Aww 😏 group verify ho gaya successfully ✅",
+        "Nice 😉 group approved aur verified hai.",
+        "Hmm 😌 verification complete, sweetheart. ✅",
+        "Uff 😈 group ne VIP entry le li. Verified ✅",
+        "Baby ❤️ group successfully verified.",
+        "Cutie 😉 verification done, all set. ✅",
+    ],
+    "group_rejected": [
+        "Uff 😮‍💨 group verification reject ho gayi ❌",
+        "Hmm 😕 is baar group approve nahi hua.",
+        "Aww 😌 verification request reject ho gayi.",
+        "Nice try 😈 group ko abhi approval nahi mila.",
+        "Sorry sweetheart ❤️ group rejected hai.",
+        "Oops 😉 verification pass nahi hui.",
+    ],
+    "no_search_result": [
+        "<i>Aww 😏 {} ke liye kuch nahi mila… spelling check karke phir try karo.</i>",
+        "<i>Hmm 😉 {} search mein nahi mila. Thoda sa movie-name tweak karo.</i>",
+        "<i>Uff 😮‍💨 {} ne aaj hide-and-seek jeet li. Ek baar phir try karo.</i>",
+        "<i>Oops 😈 {} ka result nahi mila. Cutie, naam dobara check karo.</i>",
+        "<i>Sorry sweetheart ❤️ {} ka matching result nahi mila. Try again.</i>",
+        "<i>Nice try 😌 {} ka match nahi mila. Sahi title ke saath phir search karo.</i>",
+    ],
+    "link_expired": [
+        "Aww 😮‍💨 ye link expire ho gaya, cutie. Dobara try karo.",
+        "Uff 😉 link ka time khatam ho gaya, sweetheart.",
+        "Hmm 😌 ye link ab active nahi hai. Fresh try karo.",
+        "Oops 😈 link expire ho chuka hai. Ek baar phir tap karo.",
+        "Sorry baby ❤️ ye link old ho gaya. Naya try karo.",
+        "Nice try 😏 expired link ko fresh request chahiye.",
+    ],
+    "force_subscribe": [
+        "Aww 😏 pehle channel join karo, phir movie tumhari.",
+        "Hmm 😉 channel join kar lo, cutie, phir file unlock hogi.",
+        "Uff 😮‍💨 pehle channel wali entry complete karo.",
+        "Nice try 😈 channel join ke bina movie nahi milegi.",
+        "Baby ❤️ pehle join karo, phir movie enjoy karo.",
+        "Sweetheart 😌 channel join karo aur phir dobara try karo.",
+    ],
+    "file_limit": [
+        "Uff 😮‍💨 daily file limit reach ho gayi, jaan. Premium se unlimited karo.",
+        "Aww 😏 aaj ki file limit full hai, cutie. Premium unlock karo.",
+        "Hmm 😉 limit ne aaj brake laga di. Premium se continue karo.",
+        "Nice try 😈 daily limit complete. VIP/Premium se next files unlock karo.",
+        "Baby ❤️ file limit khatam ho gayi. Premium mein full access milega.",
+        "Oops 😌 quota full ho gaya, sweetheart. Premium se smooth ride rakho.",
+    ],
+    "button_limit": [
+        "Uff 😮‍💨 Send All limit reach ho gayi, cutie. Premium chahiye.",
+        "Aww 😏 button limit full hai. Premium se unlimited use karo.",
+        "Hmm 😉 aaj ka Send All quota complete ho gaya.",
+        "Nice try 😈 limit hit ho gayi. VIP access se continue karo.",
+        "Baby ❤️ button limit khatam hai. Premium unlock kar lo.",
+        "Oops 😌 quota full, sweetheart. Premium se phir full speed.",
+    ],
+    "already_done": [
+        "Aww 😏 ye kaam already done hai.",
+        "Hmm 😉 sweetheart, ye group pehle hi verified hai. ✅",
+        "Nice 😌 ye step tum already complete kar chuke ho.",
+        "Uff 😈 double-check ki zaroorat nahi, already done.",
+        "Baby ❤️ ye kaam pehle hi ho chuka hai.",
+        "Cutie 😉 already sorted, kuch aur try karo.",
+    ],
+}
+
+
+def get_random_message(category, *args):
+    messages = NOTIFICATION_MESSAGES[category]
+    if len(messages) == 1:
+        index = 0
+    else:
+        index = random.randrange(len(messages))
+        while _NOTIFICATION_LAST_USED.get(category) == index:
+            index = random.randrange(len(messages))
+    _NOTIFICATION_LAST_USED[category] = index
+    message = messages[index].format(*args)
+    if category in {"not_your_file", "file_not_found", "premium_required", "error", "select_language", "select_quality", "select_season", "select_episode", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
+        message = message[:197] + "..."
+    return message
+
+
 class script(object):
     START_TXT = """<b><i>ʜᴇʏ 😎</i></b> {},
 <b><blockquote>Iᴍ Tʜᴇ Mᴏsᴛ Aᴅᴠᴀɴᴄᴇ Aɪ Pᴏᴡᴇʀᴅ Bᴏᴛ.🥰
