@@ -1,30 +1,8 @@
-    if file_type:
-        filter['file_type'] = file_type
+        file.file_name = re.sub(r"\s{2,}", " ", display_name).strip()
 
-    total_results = await Media.count_documents(filter)
-    next_offset = offset + max_results
-
-    if next_offset > total_results:
-        next_offset = ''
-
-    cursor = Media.find(filter)
-    # Sort by recent
-    cursor.sort('$natural', -1)
-    # Slice files according to offset and max results
-    cursor.skip(offset).limit(max_results)
-    # Get list of files
-    files = await cursor.to_list(length=max_results)
-    for file in files:
-        # Clean only the in-memory result shown to the user.
-        display_name = _clean_result_name(file.get('file_name', ''))
-        for banned_word in banned_words:
-            # Case-insensitive replacement
-            pattern = re.compile(re.escape(banned_word), re.IGNORECASE)
-            display_name = pattern.sub('', display_name).strip()
-        file['file_name'] = _clean_result_name(display_name)
-
-    # Present series seasons/episodes in a predictable order.
-    files.sort(key=lambda item: _result_sort_key(item.get('file_name', '')))
+    # Keep series seasons/episodes ordered on the current result page without
+    # changing the database schema or indexing logic.
+    files.sort(key=lambda item: _season_episode_sort_key(item.file_name))
 
     return files, next_offset, total_results
 
