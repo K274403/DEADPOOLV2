@@ -11,7 +11,7 @@ import pytz
 from datetime import datetime, timedelta, date, time
 from telegram import InputMediaPhoto
 from pyrogram.errors.exceptions.bad_request_400 import MediaEmpty, PhotoInvalidDimensions, WebpageMediaEmpty
-from Script import script, get_random_message
+from Script import script
 import pyrogram
 from database.connections_mdb import active_connection, all_connections, delete_connection, if_active, make_active, \
     make_inactive
@@ -19,7 +19,7 @@ from info import *
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto, InputMediaVideo
 from pyrogram import Client, filters, enums
 from pyrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerIdInvalid
-from utils import get_size, is_subscribed, get_poster, temp, get_settings, save_group_settings, get_shortlink, stream_site, get_text, imdb
+from utils import get_size, is_subscribed, get_poster, temp, get_settings, save_group_settings, get_shortlink, stream_site, get_text, imdb, clean_file_name, sort_files_season_first
 from database.users_chats_db import db
 from database.Lootere_reffer import sdb
 from database.ia_filterdb import Media, get_file_details, get_search_results, get_bad_files
@@ -58,7 +58,7 @@ async def stream_download(bot, query):
                 reply_markup=InlineKeyboardMarkup([[
                         InlineKeyboardButton("📥 ᴅᴏᴡɴʟᴏᴀᴅ 📥", url=non_download),
                         InlineKeyboardButton("🖥️ ꜱᴛʀᴇᴇᴍ 🖥️", url=non_online)]]))
-            await query.answer(get_random_message("premium_required"), show_alert=True)
+            await query.answer("𝐍𝐨𝐭𝐞:\n𝐓𝐡𝐞 𝐀𝐝𝐬-𝐅𝐫𝐞𝐞 𝐒𝐞𝐫𝐯𝐢𝐜𝐞𝐬 𝐎𝐧𝐥𝐲 𝐅𝐨𝐫 𝐏𝐫𝐞𝐦𝐢𝐮𝐦 𝐔𝐬𝐞𝐫𝐬\n\n‼️Tᴏ ᴋɴᴏᴡ ᴍᴏʀᴇ, ᴄʜᴇᴀᴋ ʙᴇʟᴏᴡ..!!!", show_alert=True)
             await query.edit_message_reply_markup(
                 reply_markup=InlineKeyboardMarkup([[
                         InlineKeyboardButton("📥 ᴅᴏᴡɴʟᴏᴀᴅ 📥", url=non_download),
@@ -78,7 +78,7 @@ async def stream_download(bot, query):
                     ],[
                         InlineKeyboardButton('⁉️ ᴄʟᴏsᴇ ⁉️', callback_data='close_data')]]))
     except Exception as e:
-        await query.answer(get_random_message("error", e), show_alert=True)             
+        await query.answer(f'{e}', show_alert=True)             
         
 @Client.on_message(filters.private & filters.command("stream"))
 async def reply_stream(client, message):
@@ -179,7 +179,7 @@ async def next_page(bot, query):
         curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
         ident, req, key, offset = query.data.split("_")
         if int(req) not in [query.from_user.id, 0]:
-            return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+            return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         try:
             offset = int(offset)
         except:
@@ -200,7 +200,7 @@ async def next_page(bot, query):
             btn = [
                 [
                     InlineKeyboardButton(
-                        text=f"[{get_size(file.file_size)}] {file.file_name}", callback_data=f'files#{file.file_id}'
+                        text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
                     ),
                 ]
                 for file in files
@@ -310,7 +310,7 @@ async def next_page(bot, query):
                 pass
             await query.answer()
     except Exception as e:
-        await query.answer(get_random_message("error", e), show_alert=True)
+        await query.answer(f"error found out\n\n{e}", show_alert=True)
         return
     
 @Client.on_callback_query(filters.regex(r"^lang"))
@@ -319,9 +319,9 @@ async def language_check(bot, query):
         curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
         _, userid, language = query.data.split("#")
         if int(userid) not in [query.from_user.id, 0]:
-            return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+            return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         if language == "unknown":
-            return await query.answer(get_random_message("select_language"), show_alert=True)
+            return await query.answer("Sᴇʟᴇᴄᴛ ᴀɴʏ ʟᴀɴɢᴜᴀɢᴇ ғʀᴏᴍ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs !", show_alert=True)
         movie = temp.KEYWORD.get(query.from_user.id)
         if language != "home":
             movie = f"{movie} {language}"
@@ -335,7 +335,7 @@ async def language_check(bot, query):
                 btn = [
                     [
                         InlineKeyboardButton(
-                            text=f"[{get_size(file.file_size)}] {file.file_name}", callback_data=f'files#{file.file_id}'
+                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
                         ),
                     ]
                     for file in files
@@ -403,9 +403,9 @@ async def language_check(bot, query):
                     pass
                 await query.answer()
         else:
-            return await query.answer(get_random_message("file_not_found"), show_alert=True)
+            return await query.answer(f"Sᴏʀʀʏ, Nᴏ ғɪʟᴇs ғᴏᴜɴᴅ ғᴏʀ ʏᴏᴜʀ ᴏ̨ᴜᴇʀʏ {movie}.", show_alert=True)
     except Exception as e:
-            await query.answer(get_random_message("error", e), show_alert=True)
+            await query.answer(f"error found out\n\n{e}", show_alert=True)
             return
     
 @Client.on_callback_query(filters.regex(r"^select_lang"))
@@ -413,7 +413,7 @@ async def select_language(bot, query):
     _, userid = query.data.split("#")
     curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
     if int(userid) not in [query.from_user.id, 0]:
-        return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+        return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     btn = [[
         InlineKeyboardButton("Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Lᴀɴɢᴜᴀɢᴇ ↓", callback_data=f"lang#{userid}#unknown")
     ],[
@@ -449,9 +449,9 @@ async def quality_check(bot, query):
         curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
         _, userid, quality = query.data.split("#")
         if int(userid) not in [query.from_user.id, 0]:
-            return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+            return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         if quality == "unknown":
-            return await query.answer(get_random_message("select_quality"), show_alert=True)
+            return await query.answer("Sᴇʟᴇᴄᴛ ᴀɴʏ Qᴜᴀʟɪᴛʏꜱ ғʀᴏᴍ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs !", show_alert=True)
         movie = temp.KEYWORD.get(query.from_user.id)
         if quality != "home":
             movie = f"{movie} {quality}"
@@ -465,7 +465,7 @@ async def quality_check(bot, query):
                 btn = [
                     [
                         InlineKeyboardButton(
-                            text=f"[{get_size(file.file_size)}] {file.file_name}", callback_data=f'files#{file.file_id}'
+                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
                         ),
                     ]
                     for file in files
@@ -532,9 +532,9 @@ async def quality_check(bot, query):
                     pass
                 await query.answer()
         else:
-            return await query.answer(get_random_message("file_not_found"), show_alert=True)
+            return await query.answer(f"Sᴏʀʀʏ, Nᴏ ғɪʟᴇs ғᴏᴜɴᴅ ғᴏʀ ʏᴏᴜʀ ᴏ̨ᴜᴇʀʏ {movie}.", show_alert=True)
     except Exception as e:
-            await query.answer(get_random_message("error", e), show_alert=True)
+            await query.answer(f"error found out\n\n{e}", show_alert=True)
             return
 
 @Client.on_callback_query(filters.regex(r"^quality"))
@@ -542,7 +542,7 @@ async def select_quality(bot, query):
     _, userid = query.data.split("#")
     curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
     if int(userid) not in [query.from_user.id, 0]:
-        return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+        return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     btn = [[
         InlineKeyboardButton("Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Qᴜᴀʟɪᴛʏꜱ ↓", callback_data=f"lusifilms#{userid}#unknown")
     ],[
@@ -571,9 +571,9 @@ async def seasons_check(bot, query):
         curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
         _, userid, seasons = query.data.split("#")
         if int(userid) not in [query.from_user.id, 0]:
-            return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+            return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         if seasons == "unknown":
-            return await query.answer(get_random_message("select_season"), show_alert=True)
+            return await query.answer("Sᴇʟᴇᴄᴛ ᴀɴʏ Sᴇᴀꜱᴏɴꜱ ғʀᴏᴍ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs !", show_alert=True)
         movie = temp.KEYWORD.get(query.from_user.id)
         if seasons != "home":
             movie = f"{movie} {seasons}"
@@ -587,7 +587,7 @@ async def seasons_check(bot, query):
                 btn = [
                     [
                         InlineKeyboardButton(
-                            text=f"[{get_size(file.file_size)}] {file.file_name}", callback_data=f'files#{file.file_id}'
+                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
                         ),
                     ]
                     for file in files
@@ -654,9 +654,9 @@ async def seasons_check(bot, query):
                     pass
                 await query.answer()
         else:
-            return await query.answer(get_random_message("file_not_found"), show_alert=True)
+            return await query.answer(f"Sᴏʀʀʏ, Nᴏ ғɪʟᴇs ғᴏᴜɴᴅ ғᴏʀ ʏᴏᴜʀ ᴏ̨ᴜᴇʀʏ {movie}.", show_alert=True)
     except Exception as e:
-            await query.answer(get_random_message("error", e), show_alert=True)
+            await query.answer(f"error found out\n\n{e}", show_alert=True)
             return
 
 @Client.on_callback_query(filters.regex(r"^seas"))
@@ -664,7 +664,7 @@ async def select_seasons(bot, query):
     _, userid = query.data.split("#")
     curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
     if int(userid) not in [query.from_user.id, 0]:
-        return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+        return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     btn = [[
         InlineKeyboardButton("Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Sᴇᴀꜱᴏɴꜱ ↓", callback_data=f"seasons#{userid}#unknown")
     ],[
@@ -700,9 +700,9 @@ async def episode_check(bot, query):
         curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
         _, userid, episode = query.data.split("#")
         if int(userid) not in [query.from_user.id, 0]:
-            return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+            return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         if episode == "unknown":
-            return await query.answer(get_random_message("select_episode"), show_alert=True)
+            return await query.answer("Sᴇʟᴇᴄᴛ ᴀɴʏ ᴇᴘ ғʀᴏᴍ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs !", show_alert=True)
         movie = temp.KEYWORD.get(query.from_user.id)
         if episode != "home":
             movie = f"{movie} {episode}"
@@ -716,7 +716,7 @@ async def episode_check(bot, query):
                 btn = [
                     [
                         InlineKeyboardButton(
-                            text=f"[{get_size(file.file_size)}] {file.file_name}", callback_data=f'files#{file.file_id}'
+                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
                         ),
                     ]
                     for file in files
@@ -783,16 +783,16 @@ async def episode_check(bot, query):
                     pass
                 await query.answer()
         else:
-            return await query.answer(get_random_message("file_not_found"), show_alert=True)
+            return await query.answer(f"Sᴏʀʀʏ, Nᴏ ғɪʟᴇs ғᴏᴜɴᴅ ғᴏʀ ʏᴏᴜʀ ᴏ̨ᴜᴇʀʏ {movie}.", show_alert=True)
     except Exception as e:
-            await query.answer(get_random_message("error", e), show_alert=True)
+            await query.answer(f"error found out\n\n{e}", show_alert=True)
             return
             
 @Client.on_callback_query(filters.regex(r"^epi2"))
 async def select_episode2(bot, query):
     _, userid = query.data.split("#")
     if int(userid) not in [query.from_user.id, 0]:
-        return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+        return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     btn = [[
         InlineKeyboardButton("Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Eᴘɪsᴏᴅᴇs ↓", callback_data=f"episode#{userid}#unknown")
     ],[
@@ -829,7 +829,7 @@ async def select_episode2(bot, query):
 async def select_episode(bot, query):
     _, userid = query.data.split("#")
     if int(userid) not in [query.from_user.id, 0]:
-        return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+        return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     btn = [[
         InlineKeyboardButton("Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Eᴘɪsᴏᴅᴇs ↓", callback_data=f"episode#{userid}#unknown")
     ],[
@@ -866,10 +866,10 @@ async def select_episode(bot, query):
 async def pm_spoll_choker(bot, query):
     _, id, user = query.data.split('#')
     if int(user) != 0 and query.from_user.id != int(user):
-        return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+        return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     movie = await get_poster(id, id=True)
     search = movie.get('title')
-    await query.answer(get_random_message("checking_database"))
+    await query.answer('ᴄʜᴇᴄᴋɪɴɢ ɪɴ ᴍʏ ᴅᴀᴛᴀʙᴀꜱᴇ 🌚')
     files, offset, total_results = await get_search_results(query.message.chat.id, search)
     if files:
         k = (search, files, offset, total_results)
@@ -893,7 +893,7 @@ async def pm_spoll_choker(bot, query):
                 reply_markup = InlineKeyboardMarkup(Lootere)
                 total=await bot.get_chat_members_count(query.message.chat.id)
                 await bot.send_message(chat_id=LOG_CHANNEL, text=(script.NORSLTS.format(query.message.chat.title, query.message.chat.id, total, temp.B_NAME, reqstr.mention, search)), reply_markup=InlineKeyboardMarkup(Lootere))
-            k = await query.message.edit(get_random_message("no_search_result", search))
+            k = await query.message.edit(script.MVE_NT_FND)
             await asyncio.sleep(60)
             await k.delete()
             try:
@@ -917,7 +917,7 @@ async def pm_spoll_choker(bot, query):
                 ]]
                 reply_markup = InlineKeyboardMarkup(Lootere)
                 await bot.send_message(chat_id=LOG_CHANNEL, text=(script.PMNORSLTS.format(temp.B_NAME, reqstr.mention, search)), reply_markup=InlineKeyboardMarkup(Lootere))
-            k = await query.message.edit(get_random_message("no_search_result", search))
+            k = await query.message.edit(script.MVE_NT_FND)
             await asyncio.sleep(60)
             await k.delete()
             try:
@@ -959,7 +959,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=keyboard,
             parse_mode=enums.ParseMode.MARKDOWN
         )
-        return await query.answer(get_random_message("generic"))
+        return await query.answer(MSG_ALRT)
     elif "connectcb" in query.data:
         await query.answer()
 
@@ -980,7 +980,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             )
         else:
             await query.message.edit_text('Sᴏᴍᴇ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ!!', parse_mode=enums.ParseMode.MARKDOWN)
-        return await query.answer(get_random_message("generic"))
+        return await query.answer(MSG_ALRT)
     elif "disconnect" in query.data:
         await query.answer()
 
@@ -1003,7 +1003,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 f"Sᴏᴍᴇ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ!!",
                 parse_mode=enums.ParseMode.MARKDOWN
             )
-        return await query.answer(get_random_message("generic"))
+        return await query.answer(MSG_ALRT)
     elif "deletecb" in query.data:
         await query.answer()
 
@@ -1021,7 +1021,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 f"Sᴏᴍᴇ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ!!",
                 parse_mode=enums.ParseMode.MARKDOWN
             )
-        return await query.answer(get_random_message("generic"))
+        return await query.answer(MSG_ALRT)
     elif query.data == "backcb":
         await query.answer()
 
@@ -1032,7 +1032,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.message.edit_text(
                 "Tʜᴇʀᴇ ᴀʀᴇ ɴᴏ ᴀᴄᴛɪᴠᴇ ᴄᴏɴɴᴇᴄᴛɪᴏɴs!! Cᴏɴɴᴇᴄᴛ ᴛᴏ sᴏᴍᴇ ɢʀᴏᴜᴘs ғɪʀsᴛ.",
             )
-            return await query.answer(get_random_message("generic"))
+            return await query.answer(MSG_ALRT)
         buttons = []
         for groupid in groupids:
             try:
@@ -1070,7 +1070,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
         ident, file_id = query.data.split("#")
         user = query.message.reply_to_message.from_user.id
         if int(user) != 0 and query.from_user.id != int(user):
-            return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+            return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         await query.answer(url=f"https://t.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file_id}")
                  
             
@@ -1082,7 +1082,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.answer(url=f"https://telegram.me/{temp.U_NAME}?start=allfiles_{query.message.chat.id}_{key}")
             return
         except UserIsBlocked:
-            await query.answer(get_random_message("unlock_bot"), show_alert=True)
+            await query.answer('Uɴʙʟᴏᴄᴋ ᴛʜᴇ ʙᴏᴛ ᴍᴀʜɴ !', show_alert=True)
         except PeerIdInvalid:
             await query.answer(url=f"https://telegram.me/{temp.U_NAME}?start=sendfiles3_{key}")
         except Exception as e:
@@ -1157,7 +1157,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 and st.status != enums.ChatMemberStatus.OWNER
                 and str(userid) not in ADMINS
         ):
-            await query.answer(get_random_message("access_denied"), show_alert=True)
+            await query.answer("Yᴏᴜ Dᴏɴ'ᴛ Hᴀᴠᴇ Tʜᴇ Rɪɢʜᴛs Tᴏ Dᴏ Tʜɪs !", show_alert=True)
             return
         title = query.message.chat.title
         settings = await get_settings(grp_id)
@@ -1239,7 +1239,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 and st.status != enums.ChatMemberStatus.OWNER
                 and str(userid) not in ADMINS
         ):
-            await query.answer(get_random_message("access_denied"), show_alert=True)
+            await query.answer("Yᴏᴜ Dᴏɴ'ᴛ Hᴀᴠᴇ Tʜᴇ Rɪɢʜᴛs Tᴏ Dᴏ Tʜɪs !", show_alert=True)
             return
         title = query.message.chat.title
         settings = await get_settings(grp_id)
@@ -1343,7 +1343,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
         )
-        await query.answer(get_random_message("generic"))
+        await query.answer(MSG_ALRT)
         
     elif query.data == 'features':
         buttons = [[
@@ -1358,7 +1358,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data == "show_pm":
         user_id = query.from_user.id
         total_referrals = sdb.get_refer_points(user_id)
-        await query.answer(text=get_random_message("referral_points", total_referrals), show_alert=True)
+        await query.answer(text=f'You Have: {total_referrals} Refferal Points', show_alert=True)
         
     elif query.data == "pm_reff":
         try:
@@ -1381,7 +1381,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 parse_mode=enums.ParseMode.HTML
             )
         except Exception as e:
-            await query.answer(get_random_message("error", e), show_alert=True)
+            await query.answer(f"{e}", show_alert=True)
                     
     elif query.data.startswith("not_available"):
         _, user_id, movie = data.split(":")
@@ -1394,7 +1394,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             msg=await query.edit_message_text(text=f"Mᴇꜱꜱᴀɢᴇ Sᴇɴᴅ Sᴜᴄᴄᴇꜱꜱғᴜʟʟʏ ✅\n\n⏳ꜱᴛᴀᴛᴜꜱ : Nᴏᴛ Aᴠᴀɪʟᴀʙʟᴇ 😒.\n🪪ᴜꜱᴇʀɪᴅ : `{user_id}`\n🎞ᴄᴏɴᴛᴇɴᴛ : `{movie}`", reply_markup=InlineKeyboardMarkup(Lootere))
         except Exception as e:
             print(e)
-            await query.answer(get_random_message("error", e), show_alert=True)
+            await query.answer(f"{e}", show_alert=True)
             return
     elif data.startswith("uploaded"):
         _, user_id, movie = data.split(":")
@@ -1407,7 +1407,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             msg=await query.edit_message_text(text=f"Mᴇꜱꜱᴀɢᴇ Sᴇɴᴅ Sᴜᴄᴄᴇꜱꜱғᴜʟʟʏ ✅\n\n⏳ꜱᴛᴀᴛᴜꜱ : Uᴘʟᴏᴀᴅᴇᴅ 🎊.\n🪪ᴜꜱᴇʀɪᴅ : `{user_id}`\n🎞ᴄᴏɴᴛᴇɴᴛ : `{movie}`", reply_markup=InlineKeyboardMarkup(Lootere))
         except Exception as e:
             print(e)
-            await query.answer(get_random_message("error", e), show_alert=True)
+            await query.answer(f"{e}", show_alert=True)
             return
     elif data.startswith("not_release"):
         _, user_id, movie = data.split(":")
@@ -1420,7 +1420,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             msg=await query.edit_message_text(text=f"Mᴇꜱꜱᴀɢᴇ Sᴇɴᴅ Sᴜᴄᴄᴇꜱꜱғᴜʟʟʏ ✅\n\n⏳ꜱᴛᴀᴛᴜꜱ : ɴᴏᴛ ʀᴇʟᴇᴀsᴇ 🙅.\n🪪ᴜꜱᴇʀɪᴅ : `{user_id}`\n🎞ᴄᴏɴᴛᴇɴᴛ : `{movie}`", reply_markup=InlineKeyboardMarkup(Lootere))
         except Exception as e:
             print(e)
-            await query.answer(get_random_message("error", e), show_alert=True)
+            await query.answer(f"{e}", show_alert=True)
             return
     elif data.startswith("spelling_error"):
         _, user_id, movie = data.split(":")
@@ -1433,7 +1433,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             msg=await query.edit_message_text(text=f"Mᴇꜱꜱᴀɢᴇ Sᴇɴᴅ Sᴜᴄᴄᴇꜱꜱғᴜʟʟʏ ✅\n\n⏳ꜱᴛᴀᴛᴜꜱ : Sᴘᴇʟʟɪɴɢ Eʀʀᴏʀ 🕵️.\n🪪ᴜꜱᴇʀɪᴅ : `{user_id}`\n🎞ᴄᴏɴᴛᴇɴᴛ : `{movie}`", reply_markup=InlineKeyboardMarkup(Lootere))
         except Exception as e:
             print(e)
-            await query.answer(get_random_message("error", e), show_alert=True)
+            await query.answer(f"{e}", show_alert=True)
             return
     elif data.startswith("series"):
         _, user_id, movie = data.split(":")
@@ -1446,7 +1446,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             msg=await query.edit_message_text(text=f"Mᴇꜱꜱᴀɢᴇ Sᴇɴᴅ Sᴜᴄᴄᴇꜱꜱғᴜʟʟʏ ✅\n\n⏳ꜱᴛᴀᴛᴜꜱ : Sᴇʀɪᴇs Eʀʀᴏʀ 🕵️.\n🪪ᴜꜱᴇʀɪᴅ : `{user_id}`\n🎞ᴄᴏɴᴛᴇɴᴛ : `{movie}`", reply_markup=InlineKeyboardMarkup(Lootere))
         except Exception as e:
             print(e) 
-            await query.answer(get_random_message("error", e), show_alert=True)
+            await query.answer(f"{e}", show_alert=True)
             return
         
     elif query.data == "premium_info":
@@ -1530,7 +1530,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
 
     elif query.data == "admic":
         if query.from_user.id not in ADMINS:
-            return await query.answer(get_random_message("admin_only"), show_alert=True)        
+            return await query.answer("⚠️ ʏᴏᴜ'ʀᴇ ɴᴏᴛ ᴀ ʙᴏᴛ ᴀᴅᴍɪɴ !", show_alert=True)        
         buttons = [[
             InlineKeyboardButton('⬅︎ ʙᴀᴄᴋ', callback_data='help'), 
             InlineKeyboardButton('ɴᴇxᴛ ➡︎', callback_data='admic2')
@@ -1618,7 +1618,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             )
     elif query.data == "stats":
         if query.from_user.id not in ADMINS:
-            return await query.answer(get_random_message("admin_only"), show_alert=True) 
+            return await query.answer("⚠️ ʏᴏᴜ'ʀᴇ ɴᴏᴛ ᴀ ʙᴏᴛ ᴀᴅᴍɪɴ !", show_alert=True) 
         buttons = [[
             InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='start'),
             InlineKeyboardButton('⟲ Rᴇғʀᴇsʜ', callback_data='rfrsh')
@@ -1674,7 +1674,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
 
         if str(grp_id) != str(grpid) and query.from_user.id not in ADMINS:
             await query.message.edit("Yᴏᴜʀ Aᴄᴛɪᴠᴇ Cᴏɴɴᴇᴄᴛɪᴏɴ Hᴀs Bᴇᴇɴ Cʜᴀɴɢᴇᴅ. Gᴏ Tᴏ /connections ᴀɴᴅ ᴄʜᴀɴɢᴇ ʏᴏᴜʀ ᴀᴄᴛɪᴠᴇ ᴄᴏɴɴᴇᴄᴛɪᴏɴ.")
-            return await query.answer(get_random_message("generic"))
+            return await query.answer(MSG_ALRT)
 
         if status == "True":
             await save_group_settings(grpid, set_type, False)
@@ -1746,7 +1746,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             ]
             reply_markup = InlineKeyboardMarkup(buttons)
             await query.message.edit_reply_markup(reply_markup)
-    await query.answer(get_random_message("generic"))
+    await query.answer(MSG_ALRT)
 
 async def ai_spell_check(chat_id, wrong_name):
     try:  
@@ -1831,7 +1831,7 @@ async def auto_filter(client, msg, spoll=False):
             btn = [
                 [
                     InlineKeyboardButton(
-                        text=f"[{get_size(file.file_size)}] {file.file_name}", callback_data=f'files#{file.file_id}'
+                        text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
                     ),
                 ]
                 for file in files
@@ -1924,7 +1924,7 @@ async def auto_filter(client, msg, spoll=False):
             temp.IMDB_CAP[message.from_user.id] = cap
             if settings.get("button", SINGLE_BUTTON):
                 for file in files:
-                    cap += f"<b>\n\n<a href='https://telegram.me/{temp.U_NAME}?start=files_{message.chat.id}_{file.file_id}'> 📁 {get_size(file.file_size)} ▷ {file.file_name}</a></b>"
+                    cap += f"<b>\n\n<a href='https://telegram.me/{temp.U_NAME}?start=files_{message.chat.id}_{file.file_id}'> 🔵 {get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}</a></b>"
         else:
             CAPTION = f"<b>☠️ ᴛɪᴛʟᴇ : <code>{search}</code>\n📂 ᴛᴏᴛᴀʟ ꜰɪʟᴇꜱ : <code>{total_results}</code>\n📝 ʀᴇǫᴜᴇsᴛᴇᴅ ʙʏ : {message.from_user.first_name}\n⏰ ʀᴇsᴜʟᴛ ɪɴ : <code>{remaining_seconds} Sᴇᴄᴏɴᴅs</code>\n\n📚 Your Requested Files 👇\n\n</b>"
             if not settings.get("button", SINGLE_BUTTON):
@@ -1932,7 +1932,7 @@ async def auto_filter(client, msg, spoll=False):
             else:
                 cap = f"{CAPTION}"
                 for file in files:
-                    cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{message.chat.id}_{file.file_id}'> 📁 {get_size(file.file_size)} ▷ {file.file_name}\n\n</a></b>"
+                    cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{message.chat.id}_{file.file_id}'> 🔵 {get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}\n\n</a></b>"
 
         if imdb and imdb.get('poster'):  
             try:
@@ -2016,7 +2016,7 @@ async def advantage_spell_chok(client, message):
     try:
         movies = await get_poster(search, bulk=True)
     except:
-        k = await message.reply(get_random_message("no_search_result", search))
+        k = await message.reply(script.I_CUDNT.format(search))
         await asyncio.sleep(60)
         await k.delete()
         try:
@@ -2029,7 +2029,7 @@ async def advantage_spell_chok(client, message):
         button = [[
             InlineKeyboardButton("🔍 ᴄʜᴇᴄᴋ sᴘᴇʟʟɪɴɢ ᴏɴ ɢᴏᴏɢʟᴇ 🔍", url=f"https://www.google.com/search?q={google}")
         ]]
-        k = await message.reply_text(text=get_random_message("no_search_result", search), reply_markup=InlineKeyboardMarkup(button))
+        k = await message.reply_text(text=script.I_CUDNT.format(search), reply_markup=InlineKeyboardMarkup(button))
         await asyncio.sleep(120)
         await k.delete()
         try:
@@ -2046,7 +2046,7 @@ async def advantage_spell_chok(client, message):
     buttons.append(
         [InlineKeyboardButton(text="🚫 ᴄʟᴏsᴇ 🚫", callback_data='close_data')]
     )
-    d = await message.reply_text(text=get_random_message("no_search_result", search), reply_markup=InlineKeyboardMarkup(buttons), reply_to_message_id=message.id)
+    d = await message.reply_text(text=script.CUDNT_FND.format(search), reply_markup=InlineKeyboardMarkup(buttons), reply_to_message_id=message.id)
     await asyncio.sleep(120)
     await d.delete()
     try:
