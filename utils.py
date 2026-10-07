@@ -8,7 +8,7 @@ import asyncio
 from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram import enums
 from typing import Union
-from Script import script, get_random_message
+from Script import script
 import pytz
 import random 
 from random import choice
@@ -54,6 +54,114 @@ class temp(object):
     SPELL_CHECK = {}
     IMDB_CAP = {}
     CHAT = {}
+
+def clean_file_name(file_name: str, max_len: int = 55) -> str:
+    """
+    Clean display-only noise from filenames while preserving the original metadata.
+    Hides uploader/channel prefixes, website domains, @usernames, and messy punctuation.
+    """
+    if not file_name:
+        return 'File'
+    
+    raw = str(file_name).strip()
+    # 1. Strip common media file extensions
+    cleaned = re.sub(r'\.(mkv|mp4|avi|mov|wmv|webm|zip|rar|tar|iso|flv|m4v|ts|3gp)$', '', raw, flags=re.IGNORECASE)
+    
+    # 2. Remove leading brackets like [TG @channel], [MoviesFlix.in], {MoviesNation}, (VegaMovies)
+    cleaned = re.sub(r'^[\[\(\{][^\]\)\}]+?[\]\)\}]\s*[\-:\s_]*', '', cleaned)
+    cleaned = re.sub(r'^[\[\(\{][^\]\)\}]+?[\]\)\}]\s*[\-:\s_]*', '', cleaned)
+    
+    # 3. Remove leading pipe tags: e.g. | MkvCinemas |
+    cleaned = re.sub(r'^[\|\s]+[^\|]+?[\|\s]+\s*', '', cleaned)
+    
+    # 4. Remove leading @username (e.g. @rkmovieszip_ or @Looteredev_)
+    cleaned = re.sub(r'^@[a-zA-Z0-9_]{3,32}?(?:[_\s\.\-:]+|$)', '', cleaned)
+    
+    # 5. Remove leading website/domain: e.g. www.1Tamilmv.men - or MoviesFlix.in - 
+    cleaned = re.sub(r'^(?:https?://\S+|www\.\S+|[a-zA-Z0-9_\-]+\.(?:com|org|net|in|me|to|vip|cc|site|xyz|nl|top|co|live|app|link|club|store|men))\s*[\-\:\s_]*', '', cleaned, flags=re.IGNORECASE)
+    
+    # 6. Remove remaining @usernames inside string
+    cleaned = re.sub(r'@[a-zA-Z0-9_]{3,32}', '', cleaned)
+    
+    # 7. Remove remaining domain links inside string
+    cleaned = re.sub(r'\b(?:https?://|www\.)[a-zA-Z0-9\-]+(?:\.[a-zA-Z]{2,})+(?:/\S*)?', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\b[a-zA-Z0-9\-]+(?:\.(?:com|org|net|in|me|to|vip|cc|site|xyz|nl|top|club|link|store|men))\b', '', cleaned, flags=re.IGNORECASE)
+    
+    # 8. Replace underscores with spaces
+    cleaned = cleaned.replace('_', ' ')
+    
+    # 9. Clean dots while protecting audio channels like 5.1 and 2.0
+    cleaned = re.sub(r'(?<=[57])\.(?=1\b)|(?<=[2])\.(?=0\b)', '__DOT__', cleaned)
+    cleaned = cleaned.replace('.', ' ')
+    cleaned = cleaned.replace('__DOT__', '.')
+    
+    # 10. Remove empty brackets
+    cleaned = re.sub(r'\[\s*\]|\(\s*\)|\{\s*\}', '', cleaned)
+    
+    # 11. Normalize spaces
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip(' -_:|')
+    
+    # Fallback if over-stripped
+    if not cleaned:
+        cleaned = re.sub(r'\.(mkv|mp4|avi|mov|wmv|webm|zip|rar|tar|iso|flv|m4v|ts|3gp)$', '', raw, flags=re.IGNORECASE).strip()
+    if not cleaned:
+        cleaned = raw
+        
+    # Truncate gracefully if longer than max_len
+    if len(cleaned) > max_len:
+        cleaned = cleaned[:max_len - 3].strip() + '...'
+        
+    return cleaned
+
+
+def extract_season_episode(file_obj):
+    """
+    Extract (season, is_individual_ep, episode) tuple for season-first natural sorting.
+    Packs (complete seasons) get priority 0, individual episodes get priority 1.
+    """
+    if isinstance(file_obj, str):
+        fn = file_obj
+    elif isinstance(file_obj, dict):
+        fn = file_obj.get('file_name', '')
+    else:
+        fn = getattr(file_obj, 'file_name', getattr(file_obj, 'name', str(file_obj)))
+        
+    name = str(fn).upper()
+    
+    # 1. Match S01E01 / S1E1 / S01 EP01 / S01-01 / Season 1 Episode 1
+    se_match = re.search(r'\bS(?:EASON\s*)?(\d{1,2})\s*[-._\s]*E(?:PISODE\s*|P)?\s*(\d{1,3})\b', name)
+    if se_match:
+        season = int(se_match.group(1))
+        episode = int(se_match.group(2))
+        return (season, 1, episode)
+        
+    # 2. Match Complete Season / Season Pack: e.g. Season 1 Complete / S01 Complete / S01-S04 / Complete Season
+    is_pack = bool(re.search(r'\b(COMPLETE|ALL\s*EPISODES?|ZIP|BATCH|PACK|COLLECTION)\b', name))
+    s_match = re.search(r'\b(?:SEASON|S)\s*(\d{1,2})\b', name)
+    if s_match:
+        season = int(s_match.group(1))
+        return (season, 0, 0)
+        
+    # 3. Match standalone Episode: e.g. EP 01 / Episode 01
+    ep_match = re.search(r'\b(?:EPISODE|EP)\s*(\d{1,3})\b', name)
+    if ep_match:
+        return (1, 1, int(ep_match.group(1)))
+        
+    # Non-series files stay grouped
+    return (9999, 9999, 9999)
+
+
+def sort_files_season_first(files):
+    """
+    Sorts a list of file objects/dicts season-first and preserves natural episode order.
+    Non-series files keep their natural relative order.
+    """
+    if not files:
+        return files
+    has_series = any(extract_season_episode(f)[0] != 9999 for f in files)
+    if not has_series:
+        return files
+    return sorted(files, key=extract_season_episode)
 
 async def check_reset_time():
     tz = pytz.timezone('Asia/Kolkata')
@@ -363,13 +471,14 @@ async def get_users():
 
 async def get_text(settings, remaining_seconds, files, query, total_results, search):
     try:
+        files = sort_files_season_first(files)
         if settings["imdb"]:
             IMDB_CAP = temp.IMDB_CAP.get(query.from_user.id)
             CAPTION = f"☠️ ᴛɪᴛʟᴇ : <code>{search}</code>\n📂 ᴛᴏᴛᴀʟ ꜰɪʟᴇꜱ : <code>{total_results}</code>\n📝 ʀᴇǫᴜᴇsᴛᴇᴅ ʙʏ : {query.from_user.first_name}\n⏰ ʀᴇsᴜʟᴛ ɪɴ : <code>{remaining_seconds} Sᴇᴄᴏɴᴅs</code>\n\n</b>"
             if IMDB_CAP:
                 cap = IMDB_CAP
                 for file in files: #shortlink = false, imdb = true
-                    cap += f"\n\n<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>📁 {get_size(file.file_size)} ▷ {file.file_name}</a></b>"
+                    cap += f"\n\n<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>🔵 {get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}</a></b>"
             else:
                 imdb = await get_poster(search, file=(files[0]).file_name) if settings["imdb"] else None
                 if imdb:
@@ -406,20 +515,20 @@ async def get_text(settings, remaining_seconds, files, query, total_results, sea
                         **locals()
                     )
                     for file in files:
-                        cap += f"\n\n<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>📁 {get_size(file.file_size)} ▷ {file.file_name}</a></b>"
+                        cap += f"\n\n<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>🔵 {get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}</a></b>"
                 else:
                     cap = f"{CAPTION}" #imdb = false
                     cap+="<b>📚 <u>Your Requested Files</u> 👇\n\n</b>"
                     for file in files:
-                        cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>📁 {get_size(file.file_size)} ▷ {file.file_name}\n\n</a></b>"
+                        cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>🔵 {get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}\n\n</a></b>"
     
         else:
             #imdb = false
             cap = f"☠️ ᴛɪᴛʟᴇ : <code>{search}</code>\n📂 ᴛᴏᴛᴀʟ ꜰɪʟᴇꜱ : <code>{total_results}</code>\n📝 ʀᴇǫᴜᴇsᴛᴇᴅ ʙʏ : {query.from_user.first_name}\n⏰ ʀᴇsᴜʟᴛ ɪɴ : <code>{remaining_seconds}\n\n</b>"
             cap+="<b>📚 <u>Your Requested Files</u> 👇\n\n</b>"
             for file in files:
-                cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>📁 {get_size(file.file_size)} ▷ {file.file_name}\n\n</a></b>"
+                cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>🔵 {get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}\n\n</a></b>"
         return cap
     except Exception as e:
-        await query.answer(get_random_message("error", e), show_alert=True)
+        await query.answer(f"{e}", show_alert=True)
         return cap
