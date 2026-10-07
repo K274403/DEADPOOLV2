@@ -1,74 +1,3 @@
-
-    # TODO: Find better way to get same file_id for same media to avoid duplicates
-    file_id, file_ref = unpack_new_file_id(media.file_id)
-    file_name = re.sub(r"(_|\-|\.|\+)", " ", str(media.file_name))
-    try:
-        file = Media(
-            file_id=file_id,
-            file_ref=file_ref,
-            file_name=file_name,
-            file_size=media.file_size,
-            file_type=media.file_type,
-            mime_type=media.mime_type,
-            caption=media.caption.html if media.caption else None,
-        )
-    except ValidationError:
-        logger.exception('Error occurred while saving file in database')
-        return False, None
-    else:
-        try:
-            await file.commit()
-        except DuplicateKeyError:      
-            logger.warning(
-                f'{getattr(media, "file_name", "NO_FILE")} is already saved in database'
-            )
-
-            return False, file_id
-        else:
-            logger.info(f'{getattr(media, "file_name", "NO_FILE")} is saved to database')
-            return True, file_id
-
-
-
-async def get_search_results(chat_id, query, file_type=None, max_results=10, offset=0, filter=False):
-    """For given query return (results, next_offset)"""
-    banned_words = script.BLACKLIST
-    if chat_id is not None:
-        settings = await get_settings(int(chat_id))
-        try:
-            if settings['max_btn']:
-                max_results = 10
-            else:
-                max_results = int(MAX_B_TN)
-        except KeyError:
-            await save_group_settings(int(chat_id), 'max_btn', False)
-            settings = await get_settings(int(chat_id))
-            if settings['max_btn']:
-                max_results = 10
-            else:
-                max_results = int(MAX_B_TN)
-    query = query.strip()
-    #if filter:
-        #better ?
-        #query = query.replace(' ', r'(\s|\.|\+|\-|_)')
-        #raw_pattern = r'(\s|_|\-|\.|\+)' + query + r'(\s|_|\-|\.|\+)'
-    if not query:
-        raw_pattern = '.'
-    elif ' ' not in query:
-        raw_pattern = r'(\b|[\.\+\-_])' + query + r'(\b|[\.\+\-_])'
-    else:
-        raw_pattern = query.replace(' ', r'.*[\s\.\+\-_]')
-    
-    try:
-        regex = re.compile(raw_pattern, flags=re.IGNORECASE)
-    except:
-        return []
-
-    if USE_CAPTION_FILTER:
-        filter = {'$or': [{'file_name': regex}, {'caption': regex}]}
-    else:
-        filter = {'file_name': regex}
-
     if file_type:
         filter['file_type'] = file_type
 
@@ -85,17 +14,18 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
     cursor.skip(offset).limit(max_results)
     # Get list of files
     files = await cursor.to_list(length=max_results)
-
-    # Present cleaner names and keep series seasons together. This modifies
-    # only the returned in-memory documents, never the MongoDB records.
     for file in files:
-        original_name = file['file_name']
+        # Clean only the in-memory result shown to the user.
+        display_name = _clean_result_name(file.get('file_name', ''))
         for banned_word in banned_words:
+            # Case-insensitive replacement
             pattern = re.compile(re.escape(banned_word), re.IGNORECASE)
-            original_name = pattern.sub('', original_name).strip()
-        file['file_name'] = clean_search_result_name(original_name, query)
+            display_name = pattern.sub('', display_name).strip()
+        file['file_name'] = _clean_result_name(display_name)
 
-    files.sort(key=lambda item: _result_sort_key(item, query))
+    # Present series seasons/episodes in a predictable order.
+    files.sort(key=lambda item: _result_sort_key(item.get('file_name', '')))
+
     return files, next_offset, total_results
 
 async def get_all_files():
@@ -158,3 +88,41 @@ async def get_file_details(query):
             setattr(file, 'file_name', modified_file_name)
         return filedetails
     except Exception as e:
+        logging.error("An error occurred:", exc_info=True)
+        return None
+
+def encode_file_id(s: bytes) -> str:
+    r = b""
+    n = 0
+
+    for i in s + bytes([22]) + bytes([4]):
+        if i == 0:
+            n += 1
+        else:
+            if n:
+                r += b"\x00" + bytes([n])
+                n = 0
+
+            r += bytes([i])
+
+    return base64.urlsafe_b64encode(r).decode().rstrip("=")
+
+
+def encode_file_ref(file_ref: bytes) -> str:
+    return base64.urlsafe_b64encode(file_ref).decode().rstrip("=")
+
+
+def unpack_new_file_id(new_file_id):
+    """Return file_id, file_ref"""
+    decoded = FileId.decode(new_file_id)
+    file_id = encode_file_id(
+        pack(
+            "<iiqq",
+            int(decoded.file_type),
+            decoded.dc_id,
+            decoded.media_id,
+            decoded.access_hash
+        )
+    )
+    file_ref = encode_file_ref(decoded.file_reference)
+    return file_id, file_ref
