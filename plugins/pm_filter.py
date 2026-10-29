@@ -522,26 +522,34 @@ async def select_year(bot, query):
     if int(userid) not in [query.from_user.id, 0]:
         return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
     btn = [[
-        InlineKeyboardButton("📅 Sᴇʟᴇᴄᴛ Rᴇʟᴇᴀsᴇ Yᴇᴀʀ ↓", callback_data=f"year#{userid}#unknown")
+        InlineKeyboardButton("📅 Sᴇʟᴇᴄᴛ Rᴇʟᴇᴀsᴇ Yᴇᴀʀ (1950 - 2030) ↓", callback_data=f"year#{userid}#unknown")
+    ],[
+        InlineKeyboardButton("2030", callback_data=f"year#{userid}#2030"),
+        InlineKeyboardButton("2029", callback_data=f"year#{userid}#2029"),
+        InlineKeyboardButton("2028", callback_data=f"year#{userid}#2028"),
+        InlineKeyboardButton("2027", callback_data=f"year#{userid}#2027")
     ],[
         InlineKeyboardButton("2026", callback_data=f"year#{userid}#2026"),
         InlineKeyboardButton("2025", callback_data=f"year#{userid}#2025"),
-        InlineKeyboardButton("2024", callback_data=f"year#{userid}#2024")
+        InlineKeyboardButton("2024", callback_data=f"year#{userid}#2024"),
+        InlineKeyboardButton("2023", callback_data=f"year#{userid}#2023")
     ],[
-        InlineKeyboardButton("2023", callback_data=f"year#{userid}#2023"),
         InlineKeyboardButton("2022", callback_data=f"year#{userid}#2022"),
-        InlineKeyboardButton("2021", callback_data=f"year#{userid}#2021")
-    ],[
+        InlineKeyboardButton("2021", callback_data=f"year#{userid}#2021"),
         InlineKeyboardButton("2020", callback_data=f"year#{userid}#2020"),
-        InlineKeyboardButton("2019", callback_data=f"year#{userid}#2019"),
-        InlineKeyboardButton("2018", callback_data=f"year#{userid}#2018")
+        InlineKeyboardButton("2019", callback_data=f"year#{userid}#2019")
     ],[
-        InlineKeyboardButton("2017", callback_data=f"year#{userid}#2017"),
-        InlineKeyboardButton("2016", callback_data=f"year#{userid}#2016"),
-        InlineKeyboardButton("2015", callback_data=f"year#{userid}#2015")
+        InlineKeyboardButton("📅 2015 - 2018", callback_data=f"yeardecade#{userid}#2015"),
+        InlineKeyboardButton("📅 2010 - 2014", callback_data=f"yeardecade#{userid}#2010")
     ],[
-        InlineKeyboardButton("2010 - 2014", callback_data=f"year#{userid}#2014"),
-        InlineKeyboardButton("Classic (<2010)", callback_data=f"year#{userid}#2009")
+        InlineKeyboardButton("📅 2000 - 2009", callback_data=f"yeardecade#{userid}#2000"),
+        InlineKeyboardButton("📅 1990 - 1999", callback_data=f"yeardecade#{userid}#1990")
+    ],[
+        InlineKeyboardButton("📅 1980 - 1989", callback_data=f"yeardecade#{userid}#1980"),
+        InlineKeyboardButton("📅 1970 - 1979", callback_data=f"yeardecade#{userid}#1970")
+    ],[
+        InlineKeyboardButton("📅 1960 - 1969", callback_data=f"yeardecade#{userid}#1960"),
+        InlineKeyboardButton("📅 1950 - 1959", callback_data=f"yeardecade#{userid}#1950")
     ],[
         InlineKeyboardButton("🟢 ⇦ Gᴏ Bᴀᴄᴋ", callback_data=f"year#{userid}#home")
     ]]
@@ -551,30 +559,81 @@ async def select_year(bot, query):
         pass
     await query.answer()
 
+@Client.on_callback_query(filters.regex(r"^yeardecade"))
+async def select_year_decade(bot, query):
+    _, userid, decade_str = query.data.split("#")
+    if int(userid) not in [query.from_user.id, 0]:
+        return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+    decade_start = int(decade_str)
+    if decade_start == 2015:
+        years = [2018, 2017, 2016, 2015]
+        decade_end = 2018
+    elif decade_start == 2010:
+        years = [2014, 2013, 2012, 2011, 2010]
+        decade_end = 2014
+    else:
+        decade_end = decade_start + 9
+        years = list(range(decade_end, decade_start - 1, -1))
+
+    btn = [[
+        InlineKeyboardButton(f"📅 Yᴇᴀʀꜱ : {decade_start} - {decade_end} ↓", callback_data=f"year#{userid}#unknown")
+    ]]
+    chunk_size = 4 if len(years) > 6 else 3
+    for i in range(0, len(years), chunk_size):
+        chunk = years[i:i+chunk_size]
+        btn.append([InlineKeyboardButton(str(y), callback_data=f"year#{userid}#{y}") for y in chunk])
+
+    btn.append([
+        InlineKeyboardButton(f"📁 Fɪʟᴛᴇʀ Aʟʟ ({decade_start} - {decade_end})", callback_data=f"year#{userid}#range_{decade_start}_{decade_end}")
+    ])
+    btn.append([
+        InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊 ᴛᴏ Yᴇᴀʀꜱ", callback_data=f"select_year#{userid}")
+    ])
+    try:
+        await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(btn))
+    except MessageNotModified:
+        pass
+    await query.answer()
+
 @Client.on_callback_query(filters.regex(r"^year"))
 async def year_check(bot, query):
     try:
+        curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
         _, userid, year = query.data.split("#")
         if int(userid) not in [query.from_user.id, 0]:
             return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
         if year == "unknown":
             return await query.answer(get_random_message("select_year"), show_alert=True)
         movie = temp.KEYWORD.get(query.from_user.id, "")
+        key = f"{query.message.chat.id}-{query.message.id}"
+        cached = temp.GETALL.get(key, [])
+        is_range = year.startswith("range_")
+
         if year == "home":
             search_movie = movie
-        elif year == "2014":
-            search_movie = f"{movie} 201"
-        elif year == "2009":
-            search_movie = f"{movie} 200"
-        else:
-            search_movie = f"{movie} {year}"
-        files, offset, total_results = await get_search_results(query.message.chat.id, search_movie, offset=0, filter=True)
-        key = f"{query.message.chat.id}-{query.message.id}"
-        if not files and year != "home" and year.isdigit():
-            cached = temp.GETALL.get(key, [])
-            files = [f for f in cached if extract_year(f) == int(year)]
+            files, offset, total_results = await get_search_results(query.message.chat.id, search_movie, offset=0, filter=True)
+        elif is_range:
+            parts = year.split("_")
+            y_start, y_end = int(parts[1]), int(parts[2])
+            search_movie = movie
+            if cached:
+                files = [f for f in cached if y_start <= extract_year(f) <= y_end]
+            else:
+                raw_files, _, _ = await get_search_results(query.message.chat.id, movie, offset=0, filter=True)
+                files = [f for f in raw_files if y_start <= extract_year(f) <= y_end]
             total_results = len(files)
             offset = ""
+        else:
+            search_movie = f"{movie} {year}"
+            files, offset, total_results = await get_search_results(query.message.chat.id, search_movie, offset=0, filter=True)
+            if not files and year.isdigit():
+                if not cached:
+                    raw_files, _, _ = await get_search_results(query.message.chat.id, movie, offset=0, filter=True)
+                    cached = raw_files
+                files = [f for f in cached if extract_year(f) == int(year)]
+                total_results = len(files)
+                offset = ""
+
         if files:
             settings = await get_settings(query.message.chat.id)
             temp.GETALL[key] = files
@@ -619,7 +678,8 @@ async def year_check(bot, query):
                     pass
                 await query.answer()
         else:
-            return await query.answer(f"Aww 😏 {year} me koi file nahi mili baby!", show_alert=True)
+            label = f"{parts[1]}-{parts[2]}" if is_range else year
+            return await query.answer(f"Aww 😏 {label} me koi file nahi mili baby!", show_alert=True)
     except Exception as e:
         await query.answer(f"Uff 😮‍💨 error aa gaya baby:\n{e}", show_alert=True)
         return
@@ -651,6 +711,7 @@ async def select_sort(bot, query):
 @Client.on_callback_query(filters.regex(r"^sort"))
 async def sort_check(bot, query):
     try:
+        curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
         _, userid, sort_by = query.data.split("#")
         if int(userid) not in [query.from_user.id, 0]:
             return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
@@ -677,7 +738,18 @@ async def sort_check(bot, query):
                 btn.insert(0, r)
         else:
             btn = make_search_filter_buttons(userid, key, active_filter="sort" if sort_by != "home" else None)
-        btn.append([InlineKeyboardButton("🟢 Sᴏʀᴛ Aᴘᴘʟɪᴇᴅ ✅", callback_data="pages")])
+
+        if sort_by != "home":
+            btn.append([InlineKeyboardButton("🟢 Sᴏʀᴛ Aᴘᴘʟɪᴇᴅ ✅", callback_data="pages")])
+        else:
+            total_pages = math.ceil(int(len(files))/10) if settings.get('max_btn', True) else math.ceil(int(len(files))/int(MAX_B_TN))
+            if total_pages > 1:
+                btn.append([
+                    InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data="pages"),
+                    InlineKeyboardButton(f"🟢 1/{total_pages}", callback_data="pages"),
+                    InlineKeyboardButton("🟢 𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{userid}_{key}_10")
+                ])
+
         if settings.get("button", SINGLE_BUTTON):
             cur_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
             time_difference = timedelta(hours=cur_time.hour, minutes=cur_time.minute, seconds=(cur_time.second+(cur_time.microsecond/1000000))) - timedelta(hours=curr_time.hour, minutes=curr_time.minute, seconds=(curr_time.second+(curr_time.microsecond/1000000)))
@@ -692,7 +764,10 @@ async def sort_check(bot, query):
                 await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(btn))
             except MessageNotModified:
                 pass
-        await query.answer(get_random_message("sort_applied"))
+        if sort_by == "home":
+            await query.answer("Aww 😌 wapas aa gaye baby!")
+        else:
+            await query.answer(get_random_message("sort_applied"))
     except Exception as e:
         await query.answer(f"Uff 😮‍💨 error aa gaya baby:\n{e}", show_alert=True)
         return
