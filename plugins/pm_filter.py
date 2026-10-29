@@ -11,7 +11,7 @@ import pytz
 from datetime import datetime, timedelta, date, time
 from telegram import InputMediaPhoto
 from pyrogram.errors.exceptions.bad_request_400 import MediaEmpty, PhotoInvalidDimensions, WebpageMediaEmpty
-from Script import script
+from Script import script, get_random_message
 import pyrogram
 from database.connections_mdb import active_connection, all_connections, delete_connection, if_active, make_active, \
     make_inactive
@@ -19,7 +19,7 @@ from info import *
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto, InputMediaVideo
 from pyrogram import Client, filters, enums
 from pyrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerIdInvalid
-from utils import get_size, is_subscribed, get_poster, temp, get_settings, save_group_settings, get_shortlink, stream_site, get_text, imdb, clean_file_name, sort_files_season_first
+from utils import get_size, is_subscribed, get_poster, temp, get_settings, save_group_settings, get_shortlink, stream_site, get_text, imdb, clean_file_name, sort_files_season_first, sort_files, make_search_filter_buttons, extract_year
 from database.users_chats_db import db
 from database.Lootere_reffer import sdb
 from database.ia_filterdb import Media, get_file_details, get_search_results, get_bad_files
@@ -202,7 +202,7 @@ async def next_page(bot, query):
         settings = await get_settings(query.message.chat.id)
         temp.GETALL[key] = files
         temp.CHAT[query.from_user.id] = query.message.chat.id
-        if not settings['button']:
+        if not settings.get('button', SINGLE_BUTTON):
             btn = [
                 [
                     InlineKeyboardButton(
@@ -211,30 +211,10 @@ async def next_page(bot, query):
                 ]
                 for file in files
             ]
-            btn.insert(0, [
-                InlineKeyboardButton("Sᴇᴀꜱᴏɴꜱ", callback_data=f"seas#{req}"), 
-                InlineKeyboardButton("Eᴘɪsᴏᴅᴇ", callback_data=f"epi#{req}")
-            ])
-            btn.insert(0, [
-                InlineKeyboardButton("Lᴀɴɢᴜᴀɢᴇ", callback_data=f"select_lang#{req}"),
-                InlineKeyboardButton("Qᴜᴀʟɪᴛʏꜱ", callback_data=f"quality#{req}")
-            ])
-            btn.insert(0, [
-                InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
-            ])
+            for r in reversed(make_search_filter_buttons(req, key)):
+                btn.insert(0, r)
         else:
-            btn = []
-            btn.insert(0, [
-                InlineKeyboardButton("Sᴇᴀꜱᴏɴꜱ", callback_data=f"seas#{req}"), 
-                InlineKeyboardButton("Eᴘɪsᴏᴅᴇ", callback_data=f"epi#{req}")
-            ])
-            btn.insert(0, [
-                InlineKeyboardButton("Lᴀɴɢᴜᴀɢᴇ", callback_data=f"select_lang#{req}"),
-                InlineKeyboardButton("Qᴜᴀʟɪᴛʏꜱ", callback_data=f"quality#{req}")
-            ])
-            btn.insert(0, [
-                InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
-            ])
+            btn = make_search_filter_buttons(req, key)
         try:
             if settings['max_btn']:
                 if 0 < offset <= 10:
@@ -245,16 +225,16 @@ async def next_page(bot, query):
                     off_set = offset - 10
                 if n_offset == 0:
                     btn.append(
-                        [InlineKeyboardButton("⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"), InlineKeyboardButton(f"{math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages")]
+                        [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"), InlineKeyboardButton(f"🟢 {math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages")]
                     )
                 elif off_set is None:
-                    btn.append([InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(f"{math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages"), InlineKeyboardButton("𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")])
+                    btn.append([InlineKeyboardButton("🟢 𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(f"🟢 {math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages"), InlineKeyboardButton("🟢 𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")])
                 else:
                     btn.append(
                         [
-                            InlineKeyboardButton("⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"),
-                            InlineKeyboardButton(f"{math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages"),
-                            InlineKeyboardButton("𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")
+                            InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"),
+                            InlineKeyboardButton(f"🟢 {math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages"),
+                            InlineKeyboardButton("🟢 𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")
                         ],
                     )
             else:
@@ -266,16 +246,16 @@ async def next_page(bot, query):
                     off_set = offset - int(MAX_B_TN)
                 if n_offset == 0:
                     btn.append(
-                        [InlineKeyboardButton("⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"), InlineKeyboardButton(f"{math.ceil(int(offset)/int(MAX_B_TN))+1} / {math.ceil(total/int(MAX_B_TN))}", callback_data="pages")]
+                        [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"), InlineKeyboardButton(f"🟢 {math.ceil(int(offset)/int(MAX_B_TN))+1} / {math.ceil(total/int(MAX_B_TN))}", callback_data="pages")]
                     )
                 elif off_set is None:
-                    btn.append([InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(f"{math.ceil(int(offset)/int(MAX_B_TN))+1} / {math.ceil(total/int(MAX_B_TN))}", callback_data="pages"), InlineKeyboardButton("𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")])
+                    btn.append([InlineKeyboardButton("🟢 𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(f"🟢 {math.ceil(int(offset)/int(MAX_B_TN))+1} / {math.ceil(total/int(MAX_B_TN))}", callback_data="pages"), InlineKeyboardButton("🟢 𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")])
                 else:
                     btn.append(
                         [
-                            InlineKeyboardButton("⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"),
-                            InlineKeyboardButton(f"{math.ceil(int(offset)/int(MAX_B_TN))+1} / {math.ceil(total/int(MAX_B_TN))}", callback_data="pages"),
-                            InlineKeyboardButton("𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")
+                            InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"),
+                            InlineKeyboardButton(f"🟢 {math.ceil(int(offset)/int(MAX_B_TN))+1} / {math.ceil(total/int(MAX_B_TN))}", callback_data="pages"),
+                            InlineKeyboardButton("🟢 𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")
                         ],
                     )
         except KeyError:
@@ -288,16 +268,16 @@ async def next_page(bot, query):
                 off_set = offset - 10
             if n_offset == 0:
                 btn.append(
-                    [InlineKeyboardButton("⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"), InlineKeyboardButton(f"{math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages")]
+                    [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"), InlineKeyboardButton(f"🟢 {math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages")]
                 )
             elif off_set is None:
-                btn.append([InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(f"{math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages"), InlineKeyboardButton("𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")])
+                btn.append([InlineKeyboardButton("🟢 𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(f"🟢 {math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages"), InlineKeyboardButton("🟢 𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")])
             else:
                 btn.append(
                     [
-                        InlineKeyboardButton("⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"),
-                        InlineKeyboardButton(f"{math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages"),
-                        InlineKeyboardButton("𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")
+                        InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data=f"next_{req}_{key}_{off_set}"),
+                        InlineKeyboardButton(f"🟢 {math.ceil(int(offset)/10)+1} / {math.ceil(total/10)}", callback_data="pages"),
+                        InlineKeyboardButton("🟢 𝐍𝐄𝐗𝐓 ➪", callback_data=f"next_{req}_{key}_{n_offset}")
                     ],
                 )
         if settings.get("button", SINGLE_BUTTON):
@@ -327,17 +307,35 @@ async def language_check(bot, query):
         if int(userid) not in [query.from_user.id, 0]:
             return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         if language == "unknown":
-            return await query.answer("Sᴇʟᴇᴄᴛ ᴀɴʏ ʟᴀɴɢᴜᴀɢᴇ ғʀᴏᴍ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs !", show_alert=True)
-        movie = temp.KEYWORD.get(query.from_user.id)
-        if language != "home":
-            movie = f"{movie} {language}"
-        files, offset, total_results = await get_search_results(query.message.chat.id, movie, offset=0, filter=True)
+            return await query.answer(get_random_message("select_language"), show_alert=True)
+        movie = temp.KEYWORD.get(query.from_user.id, "")
+        LANG_KEYWORDS = {
+            "hin": "hindi",
+            "eng": "english",
+            "tam": "tamil",
+            "tel": "telugu",
+            "mal": "malayalam",
+            "kan": "kannada",
+            "guj": "gujarati",
+            "mar": "marathi",
+            "pun": "punjabi",
+            "multi": "multi",
+            "dual": "dual"
+        }
+        target_lang = LANG_KEYWORDS.get(language, language)
+        search_query = movie if language == "home" else f"{movie} {target_lang}"
+        files, offset, total_results = await get_search_results(query.message.chat.id, search_query, offset=0, filter=True)
+        key = f"{query.message.chat.id}-{query.message.id}"
+        if not files and language != "home":
+            cached = temp.GETALL.get(key, [])
+            files = [f for f in cached if (target_lang in getattr(f, 'file_name', '').lower() or language in getattr(f, 'file_name', '').lower())]
+            total_results = len(files)
+            offset = ""
         if files:
             settings = await get_settings(query.message.chat.id)
-            key = f"{query.message.chat.id}-{query.message.id}"
             temp.GETALL[key] = files
             temp.CHAT[query.from_user.id] = query.message.chat.id
-            if not settings['button']:
+            if not settings.get('button', SINGLE_BUTTON):
                 btn = [
                     [
                         InlineKeyboardButton(
@@ -346,49 +344,18 @@ async def language_check(bot, query):
                     ]
                     for file in files
                 ]
-                btn.insert(0, [
-                    InlineKeyboardButton("Sᴇᴀꜱᴏɴꜱ", callback_data=f"seas#{userid}"), 
-                    InlineKeyboardButton("Eᴘɪsᴏᴅᴇ", callback_data=f"epi#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !", callback_data=f"select_lang#{userid}"),
-                    InlineKeyboardButton("Qᴜᴀʟɪᴛʏꜱ", callback_data=f"quality#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
-                ])
+                for r in reversed(make_search_filter_buttons(userid, key, active_filter="lang" if language != "home" else None)):
+                    btn.insert(0, r)
             else:
-                btn = []
-                btn.insert(0, [
-                    InlineKeyboardButton("Sᴇᴀꜱᴏɴꜱ", callback_data=f"seas#{userid}"), 
-                    InlineKeyboardButton("Eᴘɪsᴏᴅᴇ", callback_data=f"epi#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !", callback_data=f"select_lang#{userid}"),
-                    InlineKeyboardButton("Qᴜᴀʟɪᴛʏꜱ", callback_data=f"quality#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
-                ])
+                btn = make_search_filter_buttons(userid, key, active_filter="lang" if language != "home" else None)
     
             if offset != "":
-                BUTTONS[key] = movie
+                BUTTONS[key] = search_query
                 req = userid
-                try:
-                    if settings['max_btn']:
-                        btn.append(
-                            [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/10)}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                        )
-    
-                    else:
-                        btn.append(
-                            [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/int(MAX_B_TN))}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                        )
-                except KeyError:
-                    await save_group_settings(query.message.chat.id, 'max_btn', True)
-                    btn.append(
-                        [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/10)}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                    )
+                total_pages = math.ceil(int(total_results)/10) if settings.get('max_btn', True) else math.ceil(int(total_results)/int(MAX_B_TN))
+                btn.append(
+                    [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data="pages"), InlineKeyboardButton(text=f"🟢 1/{total_pages}",callback_data="pages"), InlineKeyboardButton(text="🟢 𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
+                )
             else:
                 btn.append(
                     [InlineKeyboardButton(text="𝐍𝐎 𝐌𝐎𝐑𝐄 𝐏𝐀𝐆𝐄𝐒 𝐀𝐕𝐀𝐈𝐋𝐀𝐁𝐋𝐄",callback_data="pages")]
@@ -397,7 +364,7 @@ async def language_check(bot, query):
                 cur_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
                 time_difference = timedelta(hours=cur_time.hour, minutes=cur_time.minute, seconds=(cur_time.second+(cur_time.microsecond/1000000))) - timedelta(hours=curr_time.hour, minutes=curr_time.minute, seconds=(curr_time.second+(curr_time.microsecond/1000000)))
                 remaining_seconds = "{:.2f}".format(time_difference.total_seconds())
-                cap = await get_text(settings, remaining_seconds, files, query, total_results, movie)
+                cap = await get_text(settings, remaining_seconds, files, query, total_results, search_query)
                 try:
                     await query.message.edit_text(text=cap, reply_markup=InlineKeyboardMarkup(btn))
                 except MessageNotModified:
@@ -409,7 +376,7 @@ async def language_check(bot, query):
                     pass
                 await query.answer()
         else:
-            return await query.answer(f"Sᴏʀʀʏ, Nᴏ ғɪʟᴇs ғᴏᴜɴᴅ ғᴏʀ ʏᴏᴜʀ ᴏ̨ᴜᴇʀʏ {movie}.", show_alert=True)
+            return await query.answer(f"Aww 😏 is language me koi file nahi mili baby!", show_alert=True)
     except Exception as e:
             await query.answer(f"error found out\n\n{e}", show_alert=True)
             return
@@ -421,16 +388,16 @@ async def select_language(bot, query):
     if int(userid) not in [query.from_user.id, 0]:
         return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     btn = [[
-        InlineKeyboardButton("Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Lᴀɴɢᴜᴀɢᴇ ↓", callback_data=f"lang#{userid}#unknown")
+        InlineKeyboardButton("🎧 Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Lᴀɴɢᴜᴀɢᴇ ↓", callback_data=f"lang#{userid}#unknown")
     ],[
-        InlineKeyboardButton("Eɴɢʟɪꜱʜ", callback_data=f"lang#{userid}#eng"),
+        InlineKeyboardButton("Hɪɴᴅɪ", callback_data=f"lang#{userid}#hin"),
+        InlineKeyboardButton("Eɴɢʟɪꜱʜ", callback_data=f"lang#{userid}#eng")
+    ],[
         InlineKeyboardButton("Tᴀᴍɪʟ", callback_data=f"lang#{userid}#tam"),
-        InlineKeyboardButton("Hɪɴᴅɪ", callback_data=f"lang#{userid}#hin")
-    ],[
-        InlineKeyboardButton("Kᴀɴɴᴀᴅᴀ", callback_data=f"lang#{userid}#kan"),
         InlineKeyboardButton("Tᴇʟᴜɢᴜ", callback_data=f"lang#{userid}#tel")
     ],[
-        InlineKeyboardButton("Mᴀʟᴀʏᴀʟᴀᴍ", callback_data=f"lang#{userid}#mal")
+        InlineKeyboardButton("Mᴀʟᴀʏᴀʟᴀᴍ", callback_data=f"lang#{userid}#mal"),
+        InlineKeyboardButton("Kᴀɴɴᴀᴅᴀ", callback_data=f"lang#{userid}#kan")
     ],[
         InlineKeyboardButton("Gᴜᴊᴀʀᴀᴛɪ", callback_data=f"lang#{userid}#guj"),
         InlineKeyboardButton("Mᴀʀᴀᴛʜɪ", callback_data=f"lang#{userid}#mar"),
@@ -439,7 +406,7 @@ async def select_language(bot, query):
         InlineKeyboardButton("Mᴜʟᴛɪ Aᴜᴅɪᴏ", callback_data=f"lang#{userid}#multi"),
         InlineKeyboardButton("Dᴜᴀʟ Aᴜᴅɪᴏ", callback_data=f"lang#{userid}#dual")
     ],[
-        InlineKeyboardButton("Gᴏ Bᴀᴄᴋ", callback_data=f"lang#{userid}#home")
+        InlineKeyboardButton("🟢 ⇦ Gᴏ Bᴀᴄᴋ", callback_data=f"lang#{userid}#home")
     ]]
     try:
        await query.edit_message_reply_markup(
@@ -457,17 +424,26 @@ async def quality_check(bot, query):
         if int(userid) not in [query.from_user.id, 0]:
             return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         if quality == "unknown":
-            return await query.answer("Sᴇʟᴇᴄᴛ ᴀɴʏ Qᴜᴀʟɪᴛʏꜱ ғʀᴏᴍ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs !", show_alert=True)
-        movie = temp.KEYWORD.get(query.from_user.id)
+            return await query.answer(get_random_message("select_quality"), show_alert=True)
+        movie = temp.KEYWORD.get(query.from_user.id, "")
         if quality != "home":
-            movie = f"{movie} {quality}"
-        files, offset, total_results = await get_search_results(query.message.chat.id, movie, offset=0, filter=True)
+            target_q = "1080p" if "1080" in quality else ("720p" if "720" in quality else quality)
+            search_movie = f"{movie} {target_q}"
+        else:
+            search_movie = movie
+        files, offset, total_results = await get_search_results(query.message.chat.id, search_movie, offset=0, filter=True)
+        key = f"{query.message.chat.id}-{query.message.id}"
+        if not files and quality != "home":
+            cached = temp.GETALL.get(key, [])
+            target_check = quality.lower().replace(" ", "")
+            files = [f for f in cached if ("1080" in getattr(f, 'file_name', '').lower() if "1080" in quality else ("720" in getattr(f, 'file_name', '').lower() if "720" in quality else quality.lower() in getattr(f, 'file_name', '').lower()))]
+            total_results = len(files)
+            offset = ""
         if files:
             settings = await get_settings(query.message.chat.id)
-            key = f"{query.message.chat.id}-{query.message.id}"
             temp.GETALL[key] = files
             temp.CHAT[query.from_user.id] = query.message.chat.id
-            if not settings['button']:
+            if not settings.get('button', SINGLE_BUTTON):
                 btn = [
                     [
                         InlineKeyboardButton(
@@ -476,48 +452,17 @@ async def quality_check(bot, query):
                     ]
                     for file in files
                 ]
-                btn.insert(0, [
-                    InlineKeyboardButton("Sᴇᴀꜱᴏɴꜱ", callback_data=f"seas#{userid}"), 
-                    InlineKeyboardButton("Eᴘɪsᴏᴅᴇ", callback_data=f"epi#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("Lᴀɴɢᴜᴀɢᴇ", callback_data=f"select_lang#{userid}"),
-                    InlineKeyboardButton("! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !", callback_data=f"quality#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
-                ])
+                for r in reversed(make_search_filter_buttons(userid, key, active_filter="quality" if quality != "home" else None)):
+                    btn.insert(0, r)
             else:
-                btn = []
-                btn.insert(0, [
-                    InlineKeyboardButton("Sᴇᴀꜱᴏɴꜱ", callback_data=f"seas#{userid}"), 
-                    InlineKeyboardButton("Eᴘɪsᴏᴅᴇ", callback_data=f"epi#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("Lᴀɴɢᴜᴀɢᴇ", callback_data=f"select_lang#{userid}"),
-                    InlineKeyboardButton("! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !", callback_data=f"quality#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
-                ])
+                btn = make_search_filter_buttons(userid, key, active_filter="quality" if quality != "home" else None)
             if offset != "":
-                BUTTONS[key] = movie
+                BUTTONS[key] = search_movie
                 req = userid
-                try:
-                    if settings['max_btn']:
-                        btn.append(
-                            [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/10)}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                        )
-    
-                    else:
-                        btn.append(
-                            [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/int(MAX_B_TN))}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                        )
-                except KeyError:
-                    await save_group_settings(query.message.chat.id, 'max_btn', True)
-                    btn.append(
-                        [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/10)}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                    )
+                total_pages = math.ceil(int(total_results)/10) if settings.get('max_btn', True) else math.ceil(int(total_results)/int(MAX_B_TN))
+                btn.append(
+                    [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data="pages"), InlineKeyboardButton(text=f"🟢 1/{total_pages}",callback_data="pages"), InlineKeyboardButton(text="🟢 𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
+                )
             else:
                 btn.append(
                     [InlineKeyboardButton(text="𝐍𝐎 𝐌𝐎𝐑𝐄 𝐏𝐀𝐆𝐄𝐒 𝐀𝐕𝐀𝐈𝐋𝐀𝐁𝐋𝐄",callback_data="pages")]
@@ -526,7 +471,7 @@ async def quality_check(bot, query):
                 cur_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
                 time_difference = timedelta(hours=cur_time.hour, minutes=cur_time.minute, seconds=(cur_time.second+(cur_time.microsecond/1000000))) - timedelta(hours=curr_time.hour, minutes=curr_time.minute, seconds=(curr_time.second+(curr_time.microsecond/1000000)))
                 remaining_seconds = "{:.2f}".format(time_difference.total_seconds())
-                cap = await get_text(settings, remaining_seconds, files, query, total_results, movie)
+                cap = await get_text(settings, remaining_seconds, files, query, total_results, search_movie)
                 try:
                     await query.message.edit_text(text=cap, reply_markup=InlineKeyboardMarkup(btn))
                 except MessageNotModified:
@@ -538,7 +483,7 @@ async def quality_check(bot, query):
                     pass
                 await query.answer()
         else:
-            return await query.answer(f"Sᴏʀʀʏ, Nᴏ ғɪʟᴇs ғᴏᴜɴᴅ ғᴏʀ ʏᴏᴜʀ ᴏ̨ᴜᴇʀʏ {movie}.", show_alert=True)
+            return await query.answer(f"Aww 😏 {quality} me koi file nahi mili baby!", show_alert=True)
     except Exception as e:
             await query.answer(f"error found out\n\n{e}", show_alert=True)
             return
@@ -550,7 +495,7 @@ async def select_quality(bot, query):
     if int(userid) not in [query.from_user.id, 0]:
         return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     btn = [[
-        InlineKeyboardButton("Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Qᴜᴀʟɪᴛʏꜱ ↓", callback_data=f"lusifilms#{userid}#unknown")
+        InlineKeyboardButton("🎥 Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Qᴜᴀʟɪᴛʏꜱ ↓", callback_data=f"lusifilms#{userid}#unknown")
     ],[
         InlineKeyboardButton("480p", callback_data=f"lusifilms#{userid}#480p"),
         InlineKeyboardButton("720p", callback_data=f"lusifilms#{userid}#720p")
@@ -558,10 +503,10 @@ async def select_quality(bot, query):
         InlineKeyboardButton("1080p", callback_data=f"lusifilms#{userid}#1080p"),
         InlineKeyboardButton("1080p HQ", callback_data=f"lusifilms#{userid}#1080p HQ")
     ],[
-        InlineKeyboardButton("1440p", callback_data=f"lusifilms#{userid}#1440p"),
-        InlineKeyboardButton("2160p", callback_data=f"lusifilms#{userid}#2160p")
+        InlineKeyboardButton("1440p (2K)", callback_data=f"lusifilms#{userid}#1440p"),
+        InlineKeyboardButton("2160p (4K)", callback_data=f"lusifilms#{userid}#2160p")
     ],[
-        InlineKeyboardButton("Gᴏ Bᴀᴄᴋ", callback_data=f"lusifilms#{userid}#home")
+        InlineKeyboardButton("🟢 ⇦ Gᴏ Bᴀᴄᴋ", callback_data=f"lusifilms#{userid}#home")
     ]]
     try:
        await query.edit_message_reply_markup(
@@ -570,7 +515,188 @@ async def select_quality(bot, query):
     except MessageNotModified:
         pass
     await query.answer()
-    
+
+@Client.on_callback_query(filters.regex(r"^select_year"))
+async def select_year(bot, query):
+    _, userid = query.data.split("#")
+    if int(userid) not in [query.from_user.id, 0]:
+        return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+    btn = [[
+        InlineKeyboardButton("📅 Sᴇʟᴇᴄᴛ Rᴇʟᴇᴀsᴇ Yᴇᴀʀ ↓", callback_data=f"year#{userid}#unknown")
+    ],[
+        InlineKeyboardButton("2026", callback_data=f"year#{userid}#2026"),
+        InlineKeyboardButton("2025", callback_data=f"year#{userid}#2025"),
+        InlineKeyboardButton("2024", callback_data=f"year#{userid}#2024")
+    ],[
+        InlineKeyboardButton("2023", callback_data=f"year#{userid}#2023"),
+        InlineKeyboardButton("2022", callback_data=f"year#{userid}#2022"),
+        InlineKeyboardButton("2021", callback_data=f"year#{userid}#2021")
+    ],[
+        InlineKeyboardButton("2020", callback_data=f"year#{userid}#2020"),
+        InlineKeyboardButton("2019", callback_data=f"year#{userid}#2019"),
+        InlineKeyboardButton("2018", callback_data=f"year#{userid}#2018")
+    ],[
+        InlineKeyboardButton("2017", callback_data=f"year#{userid}#2017"),
+        InlineKeyboardButton("2016", callback_data=f"year#{userid}#2016"),
+        InlineKeyboardButton("2015", callback_data=f"year#{userid}#2015")
+    ],[
+        InlineKeyboardButton("2010 - 2014", callback_data=f"year#{userid}#2014"),
+        InlineKeyboardButton("Classic (<2010)", callback_data=f"year#{userid}#2009")
+    ],[
+        InlineKeyboardButton("🟢 ⇦ Gᴏ Bᴀᴄᴋ", callback_data=f"year#{userid}#home")
+    ]]
+    try:
+        await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(btn))
+    except MessageNotModified:
+        pass
+    await query.answer()
+
+@Client.on_callback_query(filters.regex(r"^year"))
+async def year_check(bot, query):
+    try:
+        _, userid, year = query.data.split("#")
+        if int(userid) not in [query.from_user.id, 0]:
+            return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+        if year == "unknown":
+            return await query.answer(get_random_message("select_year"), show_alert=True)
+        movie = temp.KEYWORD.get(query.from_user.id, "")
+        if year == "home":
+            search_movie = movie
+        elif year == "2014":
+            search_movie = f"{movie} 201"
+        elif year == "2009":
+            search_movie = f"{movie} 200"
+        else:
+            search_movie = f"{movie} {year}"
+        files, offset, total_results = await get_search_results(query.message.chat.id, search_movie, offset=0, filter=True)
+        key = f"{query.message.chat.id}-{query.message.id}"
+        if not files and year != "home" and year.isdigit():
+            cached = temp.GETALL.get(key, [])
+            files = [f for f in cached if extract_year(f) == int(year)]
+            total_results = len(files)
+            offset = ""
+        if files:
+            settings = await get_settings(query.message.chat.id)
+            temp.GETALL[key] = files
+            temp.CHAT[query.from_user.id] = query.message.chat.id
+            if not settings.get('button', SINGLE_BUTTON):
+                btn = [
+                    [
+                        InlineKeyboardButton(
+                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                        ),
+                    ]
+                    for file in files
+                ]
+                for r in reversed(make_search_filter_buttons(userid, key, active_filter="year" if year != "home" else None)):
+                    btn.insert(0, r)
+            else:
+                btn = make_search_filter_buttons(userid, key, active_filter="year" if year != "home" else None)
+            if offset != "":
+                BUTTONS[key] = search_movie
+                req = userid
+                total_pages = math.ceil(int(total_results)/10) if settings.get('max_btn', True) else math.ceil(int(total_results)/int(MAX_B_TN))
+                btn.append(
+                    [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data="pages"), InlineKeyboardButton(text=f"🟢 1/{total_pages}",callback_data="pages"), InlineKeyboardButton(text="🟢 𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
+                )
+            else:
+                btn.append(
+                    [InlineKeyboardButton(text="𝐍𝐎 𝐌𝐎𝐑𝐄 𝐏𝐀𝐆𝐄𝐒 𝐀𝐕𝐀𝐈𝐋𝐀𝐁𝐋𝐄",callback_data="pages")]
+                )
+            if settings.get("button", SINGLE_BUTTON):
+                cur_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
+                time_difference = timedelta(hours=cur_time.hour, minutes=cur_time.minute, seconds=(cur_time.second+(cur_time.microsecond/1000000))) - timedelta(hours=curr_time.hour, minutes=curr_time.minute, seconds=(curr_time.second+(curr_time.microsecond/1000000)))
+                remaining_seconds = "{:.2f}".format(time_difference.total_seconds())
+                cap = await get_text(settings, remaining_seconds, files, query, total_results, search_movie)
+                try:
+                    await query.message.edit_text(text=cap, reply_markup=InlineKeyboardMarkup(btn))
+                except MessageNotModified:
+                    pass
+            else:
+                try:
+                    await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(btn))
+                except MessageNotModified:
+                    pass
+                await query.answer()
+        else:
+            return await query.answer(f"Aww 😏 {year} me koi file nahi mili baby!", show_alert=True)
+    except Exception as e:
+        await query.answer(f"Uff 😮‍💨 error aa gaya baby:\n{e}", show_alert=True)
+        return
+
+@Client.on_callback_query(filters.regex(r"^select_sort"))
+async def select_sort(bot, query):
+    _, userid = query.data.split("#")
+    if int(userid) not in [query.from_user.id, 0]:
+        return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+    btn = [[
+        InlineKeyboardButton("⚡ Sᴇʟᴇᴄᴛ Sᴏʀᴛ Oʀᴅᴇʀ ↓", callback_data=f"sort#{userid}#unknown")
+    ],[
+        InlineKeyboardButton("⚡ Sᴇᴀsᴏɴ Fɪʀsᴛ", callback_data=f"sort#{userid}#season"),
+        InlineKeyboardButton("🕒 Rᴇᴄᴇɴᴛ Uᴘʟᴏᴀᴅs", callback_data=f"sort#{userid}#recent")
+    ],[
+        InlineKeyboardButton("📦 Sɪᴢᴇ: Hɪɢʜ ➜ Lᴏᴡ", callback_data=f"sort#{userid}#size_desc"),
+        InlineKeyboardButton("📁 Sɪᴢᴇ: Lᴏᴡ ➜ Hɪɢʜ", callback_data=f"sort#{userid}#size_asc")
+    ],[
+        InlineKeyboardButton("📅 Yᴇᴀʀ: Nᴇᴡᴇsᴛ Fɪʀsᴛ", callback_data=f"sort#{userid}#year_desc")
+    ],[
+        InlineKeyboardButton("🟢 ⇦ Gᴏ Bᴀᴄᴋ", callback_data=f"sort#{userid}#home")
+    ]]
+    try:
+        await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(btn))
+    except MessageNotModified:
+        pass
+    await query.answer()
+
+@Client.on_callback_query(filters.regex(r"^sort"))
+async def sort_check(bot, query):
+    try:
+        _, userid, sort_by = query.data.split("#")
+        if int(userid) not in [query.from_user.id, 0]:
+            return await query.answer(get_random_message("not_your_file", query.from_user.first_name), show_alert=True)
+        if sort_by == "unknown":
+            return await query.answer(get_random_message("select_sort"), show_alert=True)
+        key = f"{query.message.chat.id}-{query.message.id}"
+        files = temp.GETALL.get(key, [])
+        movie = temp.KEYWORD.get(query.from_user.id, "")
+        if not files:
+            files, _, _ = await get_search_results(query.message.chat.id, movie, offset=0, filter=True)
+        files = sort_files(files, sort_by=sort_by if sort_by != "home" else "season")
+        temp.GETALL[key] = files
+        settings = await get_settings(query.message.chat.id)
+        if not settings.get('button', SINGLE_BUTTON):
+            btn = [
+                [
+                    InlineKeyboardButton(
+                        text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                    ),
+                ]
+                for file in files
+            ]
+            for r in reversed(make_search_filter_buttons(userid, key, active_filter="sort" if sort_by != "home" else None)):
+                btn.insert(0, r)
+        else:
+            btn = make_search_filter_buttons(userid, key, active_filter="sort" if sort_by != "home" else None)
+        btn.append([InlineKeyboardButton("🟢 Sᴏʀᴛ Aᴘᴘʟɪᴇᴅ ✅", callback_data="pages")])
+        if settings.get("button", SINGLE_BUTTON):
+            cur_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
+            time_difference = timedelta(hours=cur_time.hour, minutes=cur_time.minute, seconds=(cur_time.second+(cur_time.microsecond/1000000))) - timedelta(hours=curr_time.hour, minutes=curr_time.minute, seconds=(curr_time.second+(curr_time.microsecond/1000000)))
+            remaining_seconds = "{:.2f}".format(time_difference.total_seconds())
+            cap = await get_text(settings, remaining_seconds, files, query, len(files), movie)
+            try:
+                await query.message.edit_text(text=cap, reply_markup=InlineKeyboardMarkup(btn))
+            except MessageNotModified:
+                pass
+        else:
+            try:
+                await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(btn))
+            except MessageNotModified:
+                pass
+        await query.answer(get_random_message("sort_applied"))
+    except Exception as e:
+        await query.answer(f"Uff 😮‍💨 error aa gaya baby:\n{e}", show_alert=True)
+        return
+
 @Client.on_callback_query(filters.regex(r"^seasons"))
 async def seasons_check(bot, query):
     try:
@@ -579,7 +705,7 @@ async def seasons_check(bot, query):
         if int(userid) not in [query.from_user.id, 0]:
             return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         if seasons == "unknown":
-            return await query.answer("Sᴇʟᴇᴄᴛ ᴀɴʏ Sᴇᴀꜱᴏɴꜱ ғʀᴏᴍ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs !", show_alert=True)
+            return await query.answer(get_random_message("select_season"), show_alert=True)
         movie = temp.KEYWORD.get(query.from_user.id)
         if seasons != "home":
             movie = f"{movie} {seasons}"
@@ -589,7 +715,7 @@ async def seasons_check(bot, query):
             key = f"{query.message.chat.id}-{query.message.id}"
             temp.GETALL[key] = files
             temp.CHAT[query.from_user.id] = query.message.chat.id
-            if not settings['button']:
+            if not settings.get('button', SINGLE_BUTTON):
                 btn = [
                     [
                         InlineKeyboardButton(
@@ -598,48 +724,17 @@ async def seasons_check(bot, query):
                     ]
                     for file in files
                 ]
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !", callback_data=f"seas#{userid}"), 
-                    InlineKeyboardButton("Eᴘɪsᴏᴅᴇ", callback_data=f"epi#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("Lᴀɴɢᴜᴀɢᴇ", callback_data=f"select_lang#{userid}"),
-                    InlineKeyboardButton("Qᴜᴀʟɪᴛʏꜱ", callback_data=f"quality#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
-                ])
+                for r in reversed(make_search_filter_buttons(userid, key, active_filter="season" if seasons != "home" else None)):
+                    btn.insert(0, r)
             else:
-                btn = []
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !", callback_data=f"seas#{userid}"), 
-                    InlineKeyboardButton("Eᴘɪsᴏᴅᴇ", callback_data=f"epi#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("Lᴀɴɢᴜᴀɢᴇ", callback_data=f"select_lang#{userid}"),
-                    InlineKeyboardButton("Qᴜᴀʟɪᴛʏꜱ", callback_data=f"quality#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
-                ])
+                btn = make_search_filter_buttons(userid, key, active_filter="season" if seasons != "home" else None)
             if offset != "":
                 BUTTONS[key] = movie
                 req = userid
-                try:
-                    if settings['max_btn']:
-                        btn.append(
-                            [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/10)}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                        )
-    
-                    else:
-                        btn.append(
-                            [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/int(MAX_B_TN))}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                        )
-                except KeyError:
-                    await save_group_settings(query.message.chat.id, 'max_btn', True)
-                    btn.append(
-                        [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/10)}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                    )
+                total_pages = math.ceil(int(total_results)/10) if settings.get('max_btn', True) else math.ceil(int(total_results)/int(MAX_B_TN))
+                btn.append(
+                    [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data="pages"), InlineKeyboardButton(text=f"🟢 1/{total_pages}",callback_data="pages"), InlineKeyboardButton(text="🟢 𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
+                )
             else:
                 btn.append(
                     [InlineKeyboardButton(text="𝐍𝐎 𝐌𝐎𝐑𝐄 𝐏𝐀𝐆𝐄𝐒 𝐀𝐕𝐀𝐈𝐋𝐀𝐁𝐋𝐄",callback_data="pages")]
@@ -660,7 +755,7 @@ async def seasons_check(bot, query):
                     pass
                 await query.answer()
         else:
-            return await query.answer(f"Sᴏʀʀʏ, Nᴏ ғɪʟᴇs ғᴏᴜɴᴅ ғᴏʀ ʏᴏᴜʀ ᴏ̨ᴜᴇʀʏ {movie}.", show_alert=True)
+            return await query.answer(f"Aww 😏 {seasons} me koi file nahi mili baby!", show_alert=True)
     except Exception as e:
             await query.answer(f"error found out\n\n{e}", show_alert=True)
             return
@@ -672,7 +767,7 @@ async def select_seasons(bot, query):
     if int(userid) not in [query.from_user.id, 0]:
         return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     btn = [[
-        InlineKeyboardButton("Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Sᴇᴀꜱᴏɴꜱ ↓", callback_data=f"seasons#{userid}#unknown")
+        InlineKeyboardButton("📦 Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Sᴇᴀꜱᴏɴꜱ ↓", callback_data=f"seasons#{userid}#unknown")
     ],[
         InlineKeyboardButton("Sᴇᴀꜱᴏɴ 𝟷", callback_data=f"seasons#{userid}#s01"),
         InlineKeyboardButton("Sᴇᴀꜱᴏɴ 𝟸", callback_data=f"seasons#{userid}#s02")
@@ -689,7 +784,7 @@ async def select_seasons(bot, query):
         InlineKeyboardButton("Sᴇᴀꜱᴏɴ 𝟿", callback_data=f"seasons#{userid}#s09"),
         InlineKeyboardButton("Sᴇᴀꜱᴏɴ 𝟷𝟶", callback_data=f"seasons#{userid}#s10")
     ],[
-        InlineKeyboardButton("Gᴏ Bᴀᴄᴋ", callback_data=f"seasons#{userid}#home")
+        InlineKeyboardButton("🟢 ⇦ Gᴏ Bᴀᴄᴋ", callback_data=f"seasons#{userid}#home")
     ]]
     try:
        await query.edit_message_reply_markup(
@@ -738,37 +833,26 @@ async def episode_check(bot, query):
                 btn.insert(0, [
                     InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
                 ])
+            if not settings.get('button', SINGLE_BUTTON):
+                btn = [
+                    [
+                        InlineKeyboardButton(
+                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                        ),
+                    ]
+                    for file in files
+                ]
+                for r in reversed(make_search_filter_buttons(userid, key, active_filter="episode" if episode != "home" else None)):
+                    btn.insert(0, r)
             else:
-                btn = []
-                btn.insert(0, [
-                    InlineKeyboardButton("Sᴇᴀꜱᴏɴꜱ", callback_data=f"seas#{userid}"), 
-                    InlineKeyboardButton("! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !", callback_data=f"epi#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("Lᴀɴɢᴜᴀɢᴇ", callback_data=f"select_lang#{userid}"),
-                    InlineKeyboardButton("Qᴜᴀʟɪᴛʏꜱ", callback_data=f"quality#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
-                ])
+                btn = make_search_filter_buttons(userid, key, active_filter="episode" if episode != "home" else None)
             if offset != "":
                 BUTTONS[key] = movie
                 req = userid
-                try:
-                    if settings['max_btn']:
-                        btn.append(
-                            [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/10)}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                        )
-    
-                    else:
-                        btn.append(
-                            [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/int(MAX_B_TN))}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                        )
-                except KeyError:
-                    await save_group_settings(query.message.chat.id, 'max_btn', True)
-                    btn.append(
-                        [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/10)}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
-                    )
+                total_pages = math.ceil(int(total_results)/10) if settings.get('max_btn', True) else math.ceil(int(total_results)/int(MAX_B_TN))
+                btn.append(
+                    [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data="pages"), InlineKeyboardButton(text=f"🟢 1/{total_pages}",callback_data="pages"), InlineKeyboardButton(text="🟢 𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
+                )
             else:
                 btn.append(
                     [InlineKeyboardButton(text="𝐍𝐎 𝐌𝐎𝐑𝐄 𝐏𝐀𝐆𝐄𝐒 𝐀𝐕𝐀𝐈𝐋𝐀𝐁𝐋𝐄",callback_data="pages")]
@@ -789,7 +873,7 @@ async def episode_check(bot, query):
                     pass
                 await query.answer()
         else:
-            return await query.answer(f"Sᴏʀʀʏ, Nᴏ ғɪʟᴇs ғᴏᴜɴᴅ ғᴏʀ ʏᴏᴜʀ ᴏ̨ᴜᴇʀʏ {movie}.", show_alert=True)
+            return await query.answer(f"Aww 😏 {episode} me koi file nahi mili baby!", show_alert=True)
     except Exception as e:
             await query.answer(f"error found out\n\n{e}", show_alert=True)
             return
@@ -800,7 +884,7 @@ async def select_episode2(bot, query):
     if int(userid) not in [query.from_user.id, 0]:
         return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     btn = [[
-        InlineKeyboardButton("Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Eᴘɪsᴏᴅᴇs ↓", callback_data=f"episode#{userid}#unknown")
+        InlineKeyboardButton("🎬 Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Eᴘɪsᴏᴅᴇs ↓", callback_data=f"episode#{userid}#unknown")
     ],[
          InlineKeyboardButton("ᴇᴘ 𝟷𝟼", callback_data=f"episode#{userid}#e16"),
         InlineKeyboardButton("ᴇᴘ 𝟷𝟽", callback_data=f"episode#{userid}#e17"), 
@@ -820,8 +904,8 @@ async def select_episode2(bot, query):
         InlineKeyboardButton("ᴇᴘ 𝟸𝟿", callback_data=f"episode#{userid}#e29"), 
         InlineKeyboardButton("ᴇᴘ 𝟹𝟶", callback_data=f"episode#{userid}#e30")
     ],[
-        InlineKeyboardButton("⥢ Bᴀᴄᴋ", callback_data=f"epi#{userid}"), 
-        InlineKeyboardButton("≪Bᴀᴄᴋ ᴛᴏ Hᴏᴍᴇ≫", callback_data=f"episode#{userid}#home"),
+        InlineKeyboardButton("🟢 ⥢ Bᴀᴄᴋ", callback_data=f"epi#{userid}"), 
+        InlineKeyboardButton("🟢 ≪Bᴀᴄᴋ ᴛᴏ Hᴏᴍᴇ≫", callback_data=f"episode#{userid}#home"),
     ]]
     try:
        await query.edit_message_reply_markup(
@@ -837,7 +921,7 @@ async def select_episode(bot, query):
     if int(userid) not in [query.from_user.id, 0]:
         return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
     btn = [[
-        InlineKeyboardButton("Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Eᴘɪsᴏᴅᴇs ↓", callback_data=f"episode#{userid}#unknown")
+        InlineKeyboardButton("🎬 Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Eᴘɪsᴏᴅᴇs ↓", callback_data=f"episode#{userid}#unknown")
     ],[
         InlineKeyboardButton("ᴇᴘ 𝟷", callback_data=f"episode#{userid}#e01"),
         InlineKeyboardButton("ᴇᴘ 𝟸", callback_data=f"episode#{userid}#e02"), 
@@ -857,8 +941,8 @@ async def select_episode(bot, query):
         InlineKeyboardButton("ᴇᴘ 𝟷𝟺", callback_data=f"episode#{userid}#e14"), 
         InlineKeyboardButton("ᴇᴘ 𝟷𝟻", callback_data=f"episode#{userid}#e15")
     ],[
-        InlineKeyboardButton("⥢ Bᴀᴄᴋ", callback_data=f"episode#{userid}#home"),
-        InlineKeyboardButton("ɴᴇxᴛ ➮", callback_data=f"epi2#{userid}"),
+        InlineKeyboardButton("🟢 ⥢ Bᴀᴄᴋ", callback_data=f"episode#{userid}#home"),
+        InlineKeyboardButton("🟢 ɴᴇxᴛ ➮", callback_data=f"epi2#{userid}"),
     ]]
     try:
        await query.edit_message_reply_markup(
@@ -1833,6 +1917,7 @@ async def auto_filter(client, msg, spoll=False):
         temp.GETALL[key] = files
         temp.CHAT[message.from_user.id] = message.chat.id
         temp.KEYWORD[message.from_user.id] = search
+        req = message.from_user.id if message.from_user else 0
         if not settings.get("button", SINGLE_BUTTON):
             btn = [
                 [
@@ -1842,49 +1927,30 @@ async def auto_filter(client, msg, spoll=False):
                 ]
                 for file in files
             ]
-            
-            btn.insert(0, [
-                InlineKeyboardButton("Sᴇᴀꜱᴏɴꜱ", callback_data=f"seas#{message.from_user.id}"), 
-                InlineKeyboardButton("Eᴘɪsᴏᴅᴇ", callback_data=f"epi#{message.from_user.id}")
-            ])
-            btn.insert(0, [
-                InlineKeyboardButton("Lᴀɴɢᴜᴀɢᴇs", callback_data=f"select_lang#{message.from_user.id}"),
-                InlineKeyboardButton("Qᴜᴀʟɪᴛʏꜱ", callback_data=f"quality#{message.from_user.id}"),
-            ])
-            btn.insert(0, [
-                InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}"), 
-            ])
+            for r in reversed(make_search_filter_buttons(req, key)):
+                btn.insert(0, r)
         else:
-            btn = []
-            btn.insert(0, [
-                InlineKeyboardButton("Sᴇᴀꜱᴏɴꜱ", callback_data=f"seas#{message.from_user.id}"), 
-                InlineKeyboardButton("Eᴘɪsᴏᴅᴇ", callback_data=f"epi#{message.from_user.id}")
-            ])
-            btn.insert(0, [
-                InlineKeyboardButton("Lᴀɴɢᴜᴀɢᴇs", callback_data=f"select_lang#{message.from_user.id}"),
-                InlineKeyboardButton("Qᴜᴀʟɪᴛʏꜱ", callback_data=f"quality#{message.from_user.id}"),
-            ])
-            btn.insert(0, [
-                InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}"), 
-            ])
+            btn = make_search_filter_buttons(req, key)
     
         if offset != "":
             key = f"{message.chat.id}-{message.id}"
             BUTTONS[key] = search
-            req = message.from_user.id if message.from_user else 0
             try:
                 if settings['max_btn']:
+                    total_pages = math.ceil(int(total_results)/10)
                     btn.append(
-                        [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/10)}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
+                        [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data="pages"), InlineKeyboardButton(text=f"🟢 1/{total_pages}",callback_data="pages"), InlineKeyboardButton(text="🟢 𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
                     )
                 else:
+                    total_pages = math.ceil(int(total_results)/int(MAX_B_TN))
                     btn.append(
-                        [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/int(MAX_B_TN))}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
+                        [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data="pages"), InlineKeyboardButton(text=f"🟢 1/{total_pages}",callback_data="pages"), InlineKeyboardButton(text="🟢 𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
                     )
             except KeyError:
                 await save_group_settings(message.chat.id, 'max_btn', True)
+                total_pages = math.ceil(int(total_results)/10)
                 btn.append(
-                    [InlineKeyboardButton("𝐏𝐀𝐆𝐄", callback_data="pages"), InlineKeyboardButton(text=f"1/{math.ceil(int(total_results)/10)}",callback_data="pages"), InlineKeyboardButton(text="𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
+                    [InlineKeyboardButton("🟢 ⌫ 𝐁𝐀𝐂𝐊", callback_data="pages"), InlineKeyboardButton(text=f"🟢 1/{total_pages}",callback_data="pages"), InlineKeyboardButton(text="🟢 𝐍𝐄𝐗𝐓 ➪",callback_data=f"next_{req}_{key}_{offset}")]
                 )
         else:
             btn.append(

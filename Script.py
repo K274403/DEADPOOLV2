@@ -68,6 +68,28 @@ NOTIFICATION_MESSAGES = {
         "Baby ❤️ apna episode choose kar lo.",
         "Uff 😉 episode button tumhara wait kar raha hai.",
     ],
+    "select_year": [
+        "Cutie 😏 release year choose karo na.",
+        "Hmm 😉 kaunse saal ki movie chahiye, sweetheart?",
+        "Aww 😌 year select karo, phir dekhte hain magic.",
+        "Nice try 😈 neeche se year pick karo.",
+        "Baby ❤️ apna favourite release year select karo.",
+        "Uff 😉 year button tumhara wait kar raha hai.",
+    ],
+    "select_sort": [
+        "Cutie 😏 sort order select karo.",
+        "Hmm 😉 files kis order mein arrange karun, sweetheart?",
+        "Aww 😌 sort option choose karo, baby.",
+        "Nice try 😈 size ya season order pick karo.",
+        "Baby ❤️ apni pasand ka sort select kar lo.",
+        "Uff 😉 order sort karke sab easy kar deti hoon.",
+    ],
+    "sort_applied": [
+        "Sort ho gaya cutie 😏 ab dekho list!",
+        "Done baby 😉 files arrange kar di hain.",
+        "Aww 😌 tumhari pasand se order set ho gaya.",
+        "Nice 😈 nayi sorting ke saath files ready hain.",
+    ],
     "unlock_bot": [
         "Aww 😏 pehle bot unlock karo, phir movie milegi.",
         "Hmm 😉 bot ko unlock kar do, cutie.",
@@ -241,7 +263,7 @@ def get_random_message(category, *args):
             index = random.randrange(len(messages))
     _NOTIFICATION_LAST_USED[category] = index
     message = messages[index].format(*args)
-    if category in {"not_your_file", "file_not_found", "premium_required", "error", "select_language", "select_quality", "select_season", "select_episode", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
+    if category in {"not_your_file", "file_not_found", "premium_required", "error", "select_language", "select_quality", "select_season", "select_episode", "select_year", "select_sort", "sort_applied", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
         message = message[:197] + "..."
     return message
 

@@ -171,6 +171,84 @@ def sort_files_season_first(files):
         return files
     return sorted(files, key=extract_season_episode)
 
+
+def extract_year(file_obj):
+    """
+    Extract 4-digit release year from filename.
+    """
+    if isinstance(file_obj, str):
+        fn = file_obj
+    elif isinstance(file_obj, dict):
+        fn = file_obj.get('file_name', '')
+    else:
+        fn = getattr(file_obj, 'file_name', getattr(file_obj, 'name', str(file_obj)))
+    m = re.findall(r'\b(19\d\d|20\d\d)\b', str(fn))
+    return int(m[-1]) if m else 0
+
+
+def sort_files(files, sort_by='season'):
+    """
+    Multi-criteria file sorter for search result UI controls:
+    - 'season': Complete Season packs first, then S01E01, S01E02... (default)
+    - 'size_desc': Size: High to Low
+    - 'size_asc': Size: Low to High
+    - 'year_desc': Release Year: Newest first
+    - 'recent': Recent uploads
+    """
+    if not files:
+        return files
+    def _get_size(f):
+        if isinstance(f, dict):
+            return f.get('file_size', 0)
+        return getattr(f, 'file_size', 0)
+
+    if sort_by == 'size_desc':
+        return sorted(files, key=_get_size, reverse=True)
+    elif sort_by == 'size_asc':
+        return sorted(files, key=_get_size)
+    elif sort_by == 'year_desc':
+        return sorted(files, key=extract_year, reverse=True)
+    elif sort_by == 'recent':
+        return files
+    else:
+        return sort_files_season_first(files)
+
+
+def make_search_filter_buttons(req, key, active_filter=None):
+    """
+    Builds the standard RKMOVIESZIP Search Result interactive control buttons:
+    🔴 Red: normal actions / sub-menus (Seasons, Episode, Language, Quality, Year, Sort)
+    🟡 Yellow: VIP / Send All action
+    active_filter: None, 'season', 'episode', 'lang', 'quality', 'year', 'sort'
+    """
+    send_all_btn = [
+        InlineKeyboardButton("🟡 ! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
+    ]
+
+    seas_label = "🔴 ! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !" if active_filter == "season" else "🔴 Sᴇᴀꜱᴏɴꜱ"
+    epi_label = "🔴 ! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !" if active_filter == "episode" else "🔴 Eᴘɪsᴏᴅᴇ"
+    row1 = [
+        InlineKeyboardButton(seas_label, callback_data=f"seas#{req}"),
+        InlineKeyboardButton(epi_label, callback_data=f"epi#{req}")
+    ]
+
+    lang_label = "🔴 ! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !" if active_filter == "lang" else "🔴 Lᴀɴɢᴜᴀɢᴇ"
+    qual_label = "🔴 ! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !" if active_filter == "quality" else "🔴 Qᴜᴀʟɪᴛʏꜱ"
+    row2 = [
+        InlineKeyboardButton(lang_label, callback_data=f"select_lang#{req}"),
+        InlineKeyboardButton(qual_label, callback_data=f"quality#{req}")
+    ]
+
+    year_label = "🔴 ! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !" if active_filter == "year" else "🔴 Yᴇᴀʀ 📅"
+    sort_label = "🔴 ! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !" if active_filter == "sort" else "🔴 Sᴏʀᴛ ⚡"
+    row3 = [
+        InlineKeyboardButton(year_label, callback_data=f"select_year#{req}"),
+        InlineKeyboardButton(sort_label, callback_data=f"select_sort#{req}")
+    ]
+
+    return [send_all_btn, row1, row2, row3]
+
+
 async def check_reset_time():
     tz = pytz.timezone('Asia/Kolkata')
     while True:

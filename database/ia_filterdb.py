@@ -10,7 +10,7 @@ from umongo import Instance, Document, fields
 from motor.motor_asyncio import AsyncIOMotorClient
 from marshmallow.exceptions import ValidationError
 from info import DATABASE_URI, DATABASE_NAME, COLLECTION_NAME, USE_CAPTION_FILTER, MAX_B_TN
-from utils import get_settings, save_group_settings, sort_files_season_first
+from utils import get_settings, save_group_settings, sort_files_season_first, sort_files
 from fuzzywuzzy import process
 from Script import script
 
@@ -74,7 +74,7 @@ async def save_file(media):
 
 
 
-async def get_search_results(chat_id, query, file_type=None, max_results=10, offset=0, filter=False):
+async def get_search_results(chat_id, query, file_type=None, max_results=10, offset=0, filter=False, sort_by=None):
     """For given query return (results, next_offset)"""
     banned_words = script.BLACKLIST
     if chat_id is not None:
@@ -99,9 +99,10 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
     if not query:
         raw_pattern = '.'
     elif ' ' not in query:
-        raw_pattern = r'(\b|[\.\+\-_])' + query + r'(\b|[\.\+\-_])'
+        raw_pattern = r'(\b|[\.\+\-_])' + re.escape(query) + r'(\b|[\.\+\-_])'
     else:
-        raw_pattern = query.replace(' ', r'.*[\s\.\+\-_]')
+        words = [re.escape(w) for w in query.split() if w]
+        raw_pattern = "".join(f"(?=.*{w})" for w in words)
     
     try:
         regex = re.compile(raw_pattern, flags=re.IGNORECASE)
@@ -128,13 +129,13 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
     
     if total_results <= 120:
         all_files = await cursor.to_list(length=120)
-        all_files = sort_files_season_first(all_files)
+        all_files = sort_files(all_files, sort_by=sort_by or 'season')
         files = all_files[offset:offset+max_results]
     else:
         # Slice files according to offset and max results
         cursor.skip(offset).limit(max_results)
         files = await cursor.to_list(length=max_results)
-        files = sort_files_season_first(files)
+        files = sort_files(files, sort_by=sort_by or 'season')
 
     return files, next_offset, total_results
 
