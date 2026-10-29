@@ -1,0 +1,14 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Environment & session
+.env
+*.session
+*.session-journal
+
+# Operating system
+.DS_Store
+Thumbs.db

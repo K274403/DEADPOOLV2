@@ -1,13 +1,24 @@
 <p align="center">
-  <img src="https://i.imghippo.com/files/ftJV7492xgA.jpg" alt="Lootere-Filter-Bot Logo">
+  <img src="https://i.imghippo.com/files/ftJV7492xgA.jpg" alt="RKMOVIESZIP Bot Logo">
 </p>
 <h1 align="center">
-  Lootere-Filter-Bot
+  🎬 RKMOVIESZIP Auto Filter Bot 🎬
 </h1>
-
-![Typing SVG](https://readme-typing-svg.herokuapp.com/?lines=𝑊𝑒𝑙𝑐𝑜𝑚𝑒+𝐷𝑒𝑎𝑑𝑝𝑜𝑜𝑙-𝐹𝑖𝑙𝑡𝑒𝑟-𝐵𝑜𝑡!;𝐶𝑟𝑒𝑎𝑡𝑒𝑑+𝑏𝑦+𝐿𝑜𝑜𝑡𝑒𝑟𝑒!;𝐴+𝑝𝑜𝑤𝑒𝑟𝑓𝑢𝑙+⚡+𝑠𝑢𝑝𝑒𝑟+𝑎𝑛𝑑+𝑐𝑜𝑜𝑙+𝑓𝑒𝑎𝑡𝑢𝑟𝑒𝑠+𝑠𝑒𝑒+𝑡ℎ𝑒+𝑓𝑒𝑎𝑡𝑢𝑟𝑒𝑠!)
+<p align="center">
+  <i>The Ultra-Fast, Desi-Flirty, Premium-Powered Telegram Auto Filter Bot</i>
 </p>
-## ✨ Features
+<p align="center">
+  <img src="https://img.shields.io/badge/Brand-RKMOVIESZIP-red.svg" alt="Brand">
+  <img src="https://img.shields.io/badge/Feature%201-Clean%20Search%20%2B%20Season%20Sort-success.svg" alt="Feature 1 Status">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-blue.svg" alt="Python">
+</p>
+
+## ✨ Highlights & Features
+- 🧹 **Feature 1 Implemented**: Smart Display-Only Filename Cleaning (strips leech prefixes, channel brackets, url spam without altering MongoDB records)
+- 📦 **Season-First Ordering**: Complete Season packs sorted first, followed by natural episode sequence (`S01E01`, `S01E02`, `S02E01`...)
+- 💋 **Desi-Flirty Hinglish Persona**: Playful, movie-appropriate conversational notifications
+- 👑 **VIP & Premium Ecosystem**: Direct file bypass, ad-free streaming, and Send-All controls
+
 
 🔍 AI Auto Filter (smart search with spell-check support)
 
