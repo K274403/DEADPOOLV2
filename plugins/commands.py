@@ -193,7 +193,12 @@ async def start(client, message):
                 else:
                     verify = f"https://telegram.me/{temp.U_NAME}?start=files_{grp_id}_{file_id}"
                 
-                await client.send_message(settings['log'], script.VERIFIED_LOG_TEXT.format(Lootere.from_user.mention, user_id, datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%d %B %Y'), num))
+                log_target = settings.get('log', LOG_CHANNEL) if settings else LOG_CHANNEL
+                if log_target:
+                    try:
+                        await client.send_message(log_target, script.VERIFIED_LOG_TEXT.format(Lootere.from_user.mention, user_id, datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%d %B %Y'), num))
+                    except Exception as e:
+                        logger.warning(f"Failed to send verify log: {e}")
                 btn = [[
                     InlineKeyboardButton("✅ ɢᴇᴛ ꜰɪʟᴇ ✅", url=verify),
                 ]]
@@ -211,9 +216,10 @@ async def start(client, message):
         data = message.command[1]
         try:
             pre, grp_id, file_id = data.split('_', 2)
+            grp_id = int(grp_id)
         except:
             pre, grp_id, file_id = "", 0, data
-        settings = await get_settings(int(data.split("_", 2)[1]))
+        settings = await get_settings(int(grp_id)) if grp_id else {}
         if settings.get('fsub_id', AUTH_CHANNEL) == AUTH_REQ_CHANNEL:
             if AUTH_REQ_CHANNEL and not await is_req_subscribed(client, message):
                 try:
@@ -256,29 +262,28 @@ async def start(client, message):
                     parse_mode=enums.ParseMode.HTML
                 )
                 return
-        if not await db.has_premium_access(user_id):
+        is_vip = user_id in ADMINS or str(user_id) in ADMINS or await db.has_premium_access(user_id)
+        if not is_vip:
             if Lootere.command[1].startswith('allfiles') or Lootere.command[1].startswith('sendall'):
-                is_vip = user_id in ADMINS or str(user_id) in ADMINS
-                if not is_vip:
-                    buttons = [[
-                        InlineKeyboardButton('👑 Bᴇᴄᴏᴍᴇ VIP Mᴇᴍʙᴇʀ 👑', callback_data='premium_info')
-                    ]]
-                    return await message.reply_text(
-                        "<b>Ye VIP feature hai cutie 😏</b>\n\n<i>Saari files ek click me sirf VIP members ke liye hain baby. VIP le lo aur maze karo! 🍿</i>",
-                        reply_markup=InlineKeyboardMarkup(buttons)
-                    )
-            settings = await get_settings(int(grp_id))
-            is_verify = settings["is_verify"]
-            if not is_verify:
+                buttons = [[
+                    InlineKeyboardButton('👑 Bᴇᴄᴏᴍᴇ VIP Mᴇᴍʙᴇʀ 👑', callback_data='premium_info')
+                ]]
+                return await message.reply_text(
+                    "<b>Ye VIP feature hai cutie 😏</b>\n\n<i>Saari files ek click me sirf VIP members ke liye hain baby. VIP le lo aur maze karo! 🍿</i>",
+                    reply_markup=InlineKeyboardMarkup(buttons)
+                )
+            settings = await get_settings(int(grp_id)) if grp_id and str(grp_id).lstrip('-').isdigit() else {}
+            is_verify = settings.get("is_verify", None) if settings else None
+            if is_verify is None:
                 is_verify = await db.get_setting("IS_VERIFY", default=IS_VERIFY)
             user_verified = await db.is_user_verified(user_id)
-            is_second_shortener = await db.use_second_shortener(user_id, settings.get('verify_time', TWO_VERIFY_GAP))
-            is_third_shortener = await db.use_third_shortener(user_id, settings.get('verify_time', THIRD_VERIFY_GAP))     
+            is_second_shortener = await db.use_second_shortener(user_id, settings.get('verify_time', TWO_VERIFY_GAP) if settings else TWO_VERIFY_GAP)
+            is_third_shortener = await db.use_third_shortener(user_id, settings.get('verify_time', THIRD_VERIFY_GAP) if settings else THIRD_VERIFY_GAP)     
             if (not user_verified or is_second_shortener or is_third_shortener) and is_verify:
                 verify_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=7))
                 await db.create_verify_id(user_id, verify_id)
                 temp.CHAT[user_id] = grp_id
-                tutorial = settings.get('tutorial3', TUTORIAL3) if is_third_shortener else settings.get('tutorial2', TUTORIAL2) if is_second_shortener else settings.get('tutorial', TUTORIAL)
+                tutorial = settings.get('tutorial3', TUTORIAL3) if (settings and is_third_shortener) else settings.get('tutorial2', TUTORIAL2) if (settings and is_second_shortener) else (settings.get('tutorial', TUTORIAL) if settings else TUTORIAL)
                 
                 if Lootere.command[1].startswith('allfiles'):
                     verify = await get_shortlink(f"https://telegram.me/{temp.U_NAME}?start=sendall_{user_id}_{verify_id}_{file_id}", grp_id, is_second_shortener, is_third_shortener)
@@ -290,7 +295,7 @@ async def start(client, message):
                     ],[
                         InlineKeyboardButton("⁉️ ʜᴏᴡ ᴛᴏ ᴠᴇʀɪғʏ ⁉️", url=tutorial)
                     ],[
-                        InlineKeyboardButton("✨5ᴍɪɴ Pʀᴇᴍɪᴜᴍ Tʀᴀɪʟ✨", callback_data=f'give_trial')
+                        InlineKeyboardButton("✨5ᴍɪɴ Pʀᴇᴍɪᴜᴍ Tʀᴀɪʟ✨", callback_data='give_trial')
                     ]]
                 else:
                     buttons = [[
@@ -298,7 +303,7 @@ async def start(client, message):
                     ],[
                         InlineKeyboardButton("⁉️ ʜᴏᴡ ᴛᴏ ᴠᴇʀɪғʏ ⁉️", url=tutorial)
                     ],[
-                        InlineKeyboardButton("✨ ʀᴇᴍᴏᴠᴇ ᴠᴇʀɪғʏ ✨", callback_data=f'premium_info')
+                        InlineKeyboardButton("✨ ʀᴇᴍᴏᴠᴇ ᴠᴇʀɪғʏ ✨", callback_data='premium_info')
                     ]]
                 reply_markup=InlineKeyboardMarkup(buttons) 
                 if await db.user_verified(user_id): 

@@ -537,25 +537,29 @@ async def stream_site(link, grp_id):
         logger.error(e)
 
 async def get_shortlink(link, grp_id, is_second_shortener=False, is_third_shortener=False):
-    settings = await get_settings(grp_id) if await get_settings(grp_id) else {}
-    if is_third_shortener:
-        api_key, site_key = ('verify_api3', 'verify_3')
-        default_api, default_site = VERIFY_API3, VERIFY_URL3
-    elif is_second_shortener:
-        api_key, site_key = ('verify_api2', 'verify_2')
-        default_api, default_site = VERIFY_API2, VERIFY_URL2
-    else:
-        api_key, site_key = ('verify_api', 'verify')
-        default_api, default_site = VERIFY_API, VERIFY_URL
-
-    api = settings.get(api_key, default_api)
-    site = settings.get(site_key, default_site)
-    shortzy = Shortzy(api, site)
     try:
-        link = await shortzy.convert(link)
-    except Exception:
-        link = await shortzy.get_quick_link(link)
-    return link
+        settings = await get_settings(grp_id) if await get_settings(grp_id) else {}
+        if is_third_shortener:
+            api_key, site_key = ('verify_api3', 'verify_3')
+            default_api, default_site = VERIFY_API3, VERIFY_URL3
+        elif is_second_shortener:
+            api_key, site_key = ('verify_api2', 'verify_2')
+            default_api, default_site = VERIFY_API2, VERIFY_URL2
+        else:
+            api_key, site_key = ('verify_api', 'verify')
+            default_api, default_site = VERIFY_API, VERIFY_URL
+
+        api = settings.get(api_key, default_api)
+        site = settings.get(site_key, default_site)
+        shortzy = Shortzy(api, site)
+        try:
+            link = await shortzy.convert(link)
+        except Exception:
+            link = await shortzy.get_quick_link(link)
+        return link
+    except Exception as e:
+        logger.error(f"Error in get_shortlink: {e}")
+        return link
 
 async def get_users():
     count  = await user_col.count_documents({})
