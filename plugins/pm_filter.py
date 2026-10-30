@@ -888,26 +888,6 @@ async def episode_check(bot, query):
             key = f"{query.message.chat.id}-{query.message.id}"
             temp.GETALL[key] = files
             temp.CHAT[query.from_user.id] = query.message.chat.id
-            if not settings['button']:
-                btn = [
-                    [
-                        InlineKeyboardButton(
-                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
-                        ),
-                    ]
-                    for file in files
-                ]
-                btn.insert(0, [
-                    InlineKeyboardButton("Sᴇᴀꜱᴏɴꜱ", callback_data=f"seas#{userid}"), 
-                    InlineKeyboardButton("! Sᴇʟᴇᴄᴛ Aɢᴀɪɴ !", callback_data=f"epi#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("Lᴀɴɢᴜᴀɢᴇ", callback_data=f"select_lang#{userid}"),
-                    InlineKeyboardButton("Qᴜᴀʟɪᴛʏꜱ", callback_data=f"quality#{userid}")
-                ])
-                btn.insert(0, [
-                    InlineKeyboardButton("! Sᴇɴᴅ Aʟʟ !", callback_data=f"sendfiles#{key}")
-                ])
             if not settings.get('button', SINGLE_BUTTON):
                 btn = [
                     [
@@ -1243,6 +1223,9 @@ async def cb_handler(client: Client, query: CallbackQuery):
         clicked = query.from_user.id
         ident, key = query.data.split("#") 
         settings = await get_settings(query.message.chat.id)
+        is_vip = clicked in ADMINS or str(clicked) in ADMINS or await db.has_premium_access(clicked)
+        if not is_vip:
+            return await query.answer(get_random_message("send_all_vip"), show_alert=True)
         try:
             await query.answer(url=f"https://telegram.me/{temp.U_NAME}?start=allfiles_{query.message.chat.id}_{key}")
             return

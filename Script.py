@@ -90,6 +90,13 @@ NOTIFICATION_MESSAGES = {
         "Aww 😌 tumhari pasand se order set ho gaya.",
         "Nice 😈 nayi sorting ke saath files ready hain.",
     ],
+    "send_all_vip": [
+        "Ye VIP hai cutie 😏 Saari files ek saath chahiye toh VIP le lo!",
+        "Aww baby 😏 Send All sirf VIP members ke liye reserved hai.",
+        "Nice try darling 😈 Ek-ek karke download kar lo ya fir VIP ban jao!",
+        "Ye feature VIP hai jaan 😏 Sab ek click me lene ke liye VIP unlock karo.",
+        "Bas baby 😏 Send All VIP privilege hai, VIP plans check karo na!",
+    ],
     "unlock_bot": [
         "Aww 😏 pehle bot unlock karo, phir movie milegi.",
         "Hmm 😉 bot ko unlock kar do, cutie.",
@@ -263,7 +270,7 @@ def get_random_message(category, *args):
             index = random.randrange(len(messages))
     _NOTIFICATION_LAST_USED[category] = index
     message = messages[index].format(*args)
-    if category in {"not_your_file", "file_not_found", "premium_required", "error", "select_language", "select_quality", "select_season", "select_episode", "select_year", "select_sort", "sort_applied", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
+    if category in {"not_your_file", "file_not_found", "premium_required", "send_all_vip", "error", "select_language", "select_quality", "select_season", "select_episode", "select_year", "select_sort", "sort_applied", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
         message = message[:197] + "..."
     return message
 

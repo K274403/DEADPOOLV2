@@ -257,6 +257,16 @@ async def start(client, message):
                 )
                 return
         if not await db.has_premium_access(user_id):
+            if Lootere.command[1].startswith('allfiles') or Lootere.command[1].startswith('sendall'):
+                is_vip = user_id in ADMINS or str(user_id) in ADMINS
+                if not is_vip:
+                    buttons = [[
+                        InlineKeyboardButton('👑 Bᴇᴄᴏᴍᴇ VIP Mᴇᴍʙᴇʀ 👑', callback_data='premium_info')
+                    ]]
+                    return await message.reply_text(
+                        "<b>Ye VIP feature hai cutie 😏</b>\n\n<i>Saari files ek click me sirf VIP members ke liye hain baby. VIP le lo aur maze karo! 🍿</i>",
+                        reply_markup=InlineKeyboardMarkup(buttons)
+                    )
             settings = await get_settings(int(grp_id))
             is_verify = settings["is_verify"]
             if not is_verify:
@@ -306,6 +316,15 @@ async def start(client, message):
                 await Lootere.delete()
                 return
         if data and data.startswith("allfiles"):
+            is_vip = message.from_user.id in ADMINS or str(message.from_user.id) in ADMINS or await db.has_premium_access(message.from_user.id)
+            if not is_vip:
+                buttons = [[
+                    InlineKeyboardButton('👑 Bᴇᴄᴏᴍᴇ VIP Mᴇᴍʙᴇʀ 👑', callback_data='premium_info')
+                ]]
+                return await message.reply_text(
+                    "<b>Ye VIP feature hai cutie 😏</b>\n\n<i>Saari files ek click me sirf VIP members ke liye hain baby. VIP le lo aur maze karo! 🍿</i>",
+                    reply_markup=InlineKeyboardMarkup(buttons)
+                )
             files = temp.GETALL.get(file_id)
             if not files:
                 return await message.reply('<b><i>Nᴏ Sᴜᴄʜ Fɪʟᴇ Eᴇxɪsᴛ.</b></i>')
