@@ -384,16 +384,21 @@ async def start(client, message):
                 if not await db.has_premium_access(message.from_user.id):
                     limit = settings.get("file_limit", FILE_LIMITE)
                     if settings.get("filelock", LIMIT_MODE):
-                        await db.update_files(message.from_user.id, "files_count", files_counts + 1)
-                        files_count=await db.files_count(message.from_user.id, "files_count")
-                        f_caption += f"<b>\n\nDᴀɪʟʏ Fɪʟᴇ Lɪᴍɪᴛ: {files_count}/{limit}</b>"      
                         if files_counts is not None and files_counts >= limit:
                             buttons = [[
-                                       InlineKeyboardButton('✨ Rᴇᴍᴏᴠᴇ Lɪᴍɪᴛᴇ ✨', callback_data=f'premium_info')
-                                      ]]
+                                InlineKeyboardButton('👑 Uɴʟᴏᴄᴋ Uɴʟɪᴍɪᴛᴇᴅ VIP (Nᴏ Lɪᴍɪᴛꜱ) 👑', callback_data='premium_info')
+                            ]]
                             reply_markup = InlineKeyboardMarkup(buttons)
-                            return await message.reply_text(script.FILE_LIMIT,
-                            reply_markup=reply_markup)
+                            return await message.reply_text(
+                                script.FILE_LIMIT.format(files_counts, limit),
+                                reply_markup=reply_markup
+                            )
+                        new_count = files_counts + 1
+                        await db.update_files(message.from_user.id, "files_count", new_count)
+                        remaining = max(0, limit - new_count)
+                        f_caption += f"<b>\n\n📂 ᴅᴀɪʟʏ ǫᴜᴏᴛᴀ : {new_count}/{limit} (Bacha: {remaining}) | ʀᴇsᴇᴛ: 11:59 PM IST</b>"
+                else:
+                    f_caption += f"<b>\n\n👑 VIP ᴍᴇᴍʙᴇʀ : ᴜɴʟɪᴍɪᴛᴇᴅ ᴅᴏᴡɴʟᴏᴀᴅs ⚡</b>"
                 button = [[
                     InlineKeyboardButton("🖥️ ᴡᴀᴛᴄʜ / ᴅᴏᴡɴʟᴏᴀᴅ 📥", callback_data=f"streaming#{file_id}#{grp_id}")
                     ]]
@@ -443,16 +448,21 @@ async def start(client, message):
         if not await db.has_premium_access(message.from_user.id):
             limit = settings.get("file_limit", FILE_LIMITE)
             if settings.get("filelock", LIMIT_MODE):
-                await db.update_files(message.from_user.id, "files_count", files_counts + 1)
-                files_count=await db.files_count(message.from_user.id, "files_count")
-                f_caption += f"<b>\n\nDᴀɪʟʏ Fɪʟᴇ Lɪᴍɪᴛ: {files_count}/{limit}</b>"      
                 if files_counts is not None and files_counts >= limit:
                     buttons = [[
-                               InlineKeyboardButton('✨ Rᴇᴍᴏᴠᴇ Lɪᴍɪᴛᴇ ✨', callback_data=f'premium_info')
-                              ]]
+                        InlineKeyboardButton('👑 Uɴʟᴏᴄᴋ Uɴʟɪᴍɪᴛᴇᴅ VIP (Nᴏ Lɪᴍɪᴛꜱ) 👑', callback_data='premium_info')
+                    ]]
                     reply_markup = InlineKeyboardMarkup(buttons)
-                    return await message.reply_text(script.FILE_LIMIT,
-                    reply_markup=reply_markup)
+                    return await message.reply_text(
+                        script.FILE_LIMIT.format(files_counts, limit),
+                        reply_markup=reply_markup
+                    )
+                new_count = files_counts + 1
+                await db.update_files(message.from_user.id, "files_count", new_count)
+                remaining = max(0, limit - new_count)
+                f_caption += f"<b>\n\n📂 ᴅᴀɪʟʏ ǫᴜᴏᴛᴀ : {new_count}/{limit} (Bacha: {remaining}) | ʀᴇsᴇᴛ: 11:59 PM IST</b>"
+        else:
+            f_caption += f"<b>\n\n👑 VIP ᴍᴇᴍʙᴇʀ : ᴜɴʟɪᴍɪᴛᴇᴅ ᴅᴏᴡɴʟᴏᴀᴅs ⚡</b>"
         button = [[
             InlineKeyboardButton("🖥️ ᴡᴀᴛᴄʜ / ᴅᴏᴡɴʟᴏᴀᴅ 📥", callback_data=f"streaming#{file_id}#{grp_id}")
             ]]

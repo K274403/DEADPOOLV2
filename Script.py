@@ -110,6 +110,13 @@ NOTIFICATION_MESSAGES = {
         "Cutie 😏 4K prints chahiye toh VIP unlock karo na!",
         "Ye resolution VIP locked hai baby 😏 720p dekh lo ya VIP ban jao!",
     ],
+    "daily_quota_full": [
+        "Bas baby 😏 quota full. Aaj ka free limit complete ho gaya!",
+        "Aww cutie 😏 aaj ka daily quota khatam, ab VIP le lo ya kal aao!",
+        "Uff baby 😉 free quota over ho gaya, VIP me unlimited files hain!",
+        "Nice downloading darling 😈 lekin daily quota limit poora ho chuka hai!",
+        "Quota full sweetheart 😏 Raat 11:59 PM IST par reset hoga ya VIP join karo!",
+    ],
     "unlock_bot": [
         "Aww 😏 pehle bot unlock karo, phir movie milegi.",
         "Hmm 😉 bot ko unlock kar do, cutie.",
@@ -283,7 +290,7 @@ def get_random_message(category, *args):
             index = random.randrange(len(messages))
     _NOTIFICATION_LAST_USED[category] = index
     message = messages[index].format(*args)
-    if category in {"not_your_file", "file_not_found", "premium_required", "send_all_vip", "shortener_bypass_vip", "resolution_locked", "error", "select_language", "select_quality", "select_season", "select_episode", "select_year", "select_sort", "sort_applied", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
+    if category in {"not_your_file", "file_not_found", "premium_required", "send_all_vip", "shortener_bypass_vip", "resolution_locked", "daily_quota_full", "error", "select_language", "select_quality", "select_season", "select_episode", "select_year", "select_sort", "sort_applied", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
         message = message[:197] + "..."
     return message
 
@@ -403,24 +410,19 @@ ____________________________
 
 #verified_{}_completed"""
     
-    FILE_LIMIT = """
-📁 ʏᴏᴜʀ ғɪʟᴇ ʟɪᴍɪᴛ ʀᴇᴀᴄʜᴇᴅ
+    FILE_LIMIT = """<b>📁 Bas baby 😏 quota full ho gaya!</b>
 
-ɪғ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ɢᴇᴛ ᴜɴʟɪᴍɪᴛᴇᴅ ғɪʟᴇs ᴛʜᴇɴ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ
+Cutie, aapki aaj ki <b>free file quota ({}/{})</b> complete ho chuki hai!
+⏳ Agla quota reset: <b>Raat 11:59 PM IST</b> par hoga.
 
-💲sᴇᴇ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴs /plans
+<i>Agar abhi aur movies dekhni hain toh VIP join kar lo meri jaan! Unlimited files, zero wait aur no limits 🍿👑</i>"""
 
-ʀᴇsᴇᴛ ᴛɪᴍᴇ ⌚ = 11.59 PM.
-"""
-    BUTTON_LIMIT = """
-sᴇɴᴅ ᴀʟʟ ʙᴜᴛᴛᴏɴ ʟɪᴍɪᴛ ʀᴇᴀᴄʜᴇᴅ
+    BUTTON_LIMIT = """<b>⚡ Ye VIP feature hai cutie 😏</b>
 
-ɪғ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ɢᴇᴛ ᴜɴʟɪᴍɪᴛᴇᴅ ʙᴜᴛᴛᴏɴ ᴜsᴇ ᴛʜᴇɴ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ
+Baby, bulk files delivery aur unlimited downloads sirf VIP members ke liye hain!
+⏳ Agla daily reset: <b>Raat 11:59 PM IST</b>
 
-💲sᴇᴇ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴs /plans
-
-ʀᴇsᴇᴛ ᴛɪᴍᴇ ⌚ = 11.59 PM.
-"""
+<i>Abhi VIP le lo aur unlimited files paao bina kisi wait ke 👑</i>"""
 
     ABOUT_TXT = """<b>
 ‣ ᴍʏ ɴᴀᴍᴇ : <a href=https://t.me/{}>{}</a>

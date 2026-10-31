@@ -272,13 +272,27 @@ def make_search_filter_buttons(req, key, active_filter=None):
     return [send_all_btn, row1, row2, row3]
 
 
+def get_time_until_midnight_ist():
+    tz = pytz.timezone('Asia/Kolkata')
+    now = datetime.now(tz)
+    target_time = time(23, 59, 59)
+    target_datetime = tz.localize(datetime.combine(now.date(), target_time))
+    if now > target_datetime:
+        target_datetime += timedelta(days=1)
+    time_diff = (target_datetime - now).total_seconds()
+    hours = int(time_diff // 3600)
+    minutes = int((time_diff % 3600) // 60)
+    seconds = int(time_diff % 60)
+    return hours, minutes, seconds
+
+
 async def check_reset_time():
     tz = pytz.timezone('Asia/Kolkata')
     while True:
         now = datetime.now(tz)
-        target_time = time(23, 59)
+        target_time = time(23, 59, 59)
         target_datetime = tz.localize(datetime.combine(now.date(), target_time))
-        if now > target_datetime:
+        if now >= target_datetime:
             target_datetime += timedelta(days=1)
         time_diff = (target_datetime - now).total_seconds()
         hours = time_diff // 3600
@@ -289,6 +303,7 @@ async def check_reset_time():
         await db.reset_all_files_count()
         await db.reset_allsend_files()
         logging.info("Files count and send count reset successfully")
+        await asyncio.sleep(5)  # Buffer to ensure next day has begun
 
 async def get_seconds(time_string):
     def extract_value_and_unit(ts):

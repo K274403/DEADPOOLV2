@@ -247,7 +247,7 @@ class Database:
         user = await self.col.find_one({"id": user_id})
         if user is None:
             return
-        await self.col.update_one({"id": user_id}, {"$set": {"files_coun": 0}})
+        await self.col.update_one({"id": user_id}, {"$set": {"files_count": 0}})
 
     async def add_chat(self, chat, title, owner_id):
         chat = self.new_group(chat, title, owner_id)

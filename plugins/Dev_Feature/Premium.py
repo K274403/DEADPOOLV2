@@ -4,8 +4,8 @@ from datetime import timedelta, datetime, time
 import pytz
 from Script import script
 from asyncio import sleep
-from info import ADMINS, PREMIUM_LOGS, OWNER_USER_NAME, PREMIUM_PIC
-from utils import get_seconds
+from info import ADMINS, PREMIUM_LOGS, OWNER_USER_NAME, PREMIUM_PIC, FILE_LIMITE
+from utils import get_seconds, get_time_until_midnight_ist
 from database.users_chats_db import db 
 from pyrogram import Client, filters 
 from pyrogram.errors.exceptions.bad_request_400 import MessageTooLong
@@ -51,28 +51,50 @@ async def remove_premium(client, message):
     else:
         await message.reply_text("ᴜꜱᴀɢᴇ : /remove_premium user_id") 
 
-@Client.on_message(filters.command("myplan"))
+@Client.on_message(filters.command(["myplan", "quota", "daily_limit"]))
 async def myplan(client, message):
     user = message.from_user.mention 
     user_id = message.from_user.id
-    data = await db.get_user(message.from_user.id)  # Convert the user_id to integer
-    if data and data.get("expiry_time"):
-        expiry = data.get("expiry_time") 
-        expiry_ist = expiry.astimezone(pytz.timezone("Asia/Kolkata"))
-        expiry_str_in_ist = expiry.astimezone(pytz.timezone("Asia/Kolkata")).strftime("%d-%m-%Y\n⏱️ ᴇxᴘɪʀʏ ᴛɪᴍᴇ : %I:%M:%S %p")            
-        current_time = datetime.now(pytz.timezone("Asia/Kolkata"))
-        time_left = expiry_ist - current_time
-            
-        days = time_left.days
-        hours, remainder = divmod(time_left.seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-            
-        # Format time left as a string
-        time_left_str = f"{days} ᴅᴀʏꜱ, {hours} ʜᴏᴜʀꜱ, {minutes} ᴍɪɴᴜᴛᴇꜱ"
-        await message.reply_text(f"⚜️ ᴘʀᴇᴍɪᴜᴍ ᴜꜱᴇʀ ᴅᴀᴛᴀ :\n\n👤 ᴜꜱᴇʀ : {user}\n⚡ ᴜꜱᴇʀ ɪᴅ : <code>{user_id}</code>\n⏰ ᴛɪᴍᴇ ʟᴇꜰᴛ : {time_left_str}\n⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}")   
+    is_vip = user_id in ADMINS or str(user_id) in ADMINS or await db.has_premium_access(user_id)
+    data = await db.get_user(user_id)
+    if is_vip:
+        time_left_str = "Permanent Admin Access" if (user_id in ADMINS or str(user_id) in ADMINS) else "Active VIP Plan"
+        expiry_str_in_ist = "Lifetime" if (user_id in ADMINS or str(user_id) in ADMINS) else "Active"
+        if data and data.get("expiry_time"):
+            expiry = data.get("expiry_time") 
+            expiry_ist = expiry.astimezone(pytz.timezone("Asia/Kolkata"))
+            expiry_str_in_ist = expiry_ist.strftime("%d-%m-%Y (%I:%M %p)")
+            current_time = datetime.now(pytz.timezone("Asia/Kolkata"))
+            time_left = expiry_ist - current_time
+            days = time_left.days
+            hours, remainder = divmod(time_left.seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            time_left_str = f"{days} ᴅᴀʏꜱ, {hours} ʜᴏᴜʀꜱ, {minutes} ᴍɪɴᴜᴛᴇꜱ"
+
+        await message.reply_text(
+            f"⚜️ <b>VIP Cutie Status:</b>\n\n"
+            f"👤 <b>User:</b> {user}\n"
+            f"⚡ <b>User ID:</b> <code>{user_id}</code>\n"
+            f"👑 <b>Tier:</b> <b>Premium VIP Member</b>\n"
+            f"⏰ <b>Time Left:</b> <code>{time_left_str}</code>\n"
+            f"⌛️ <b>Expiry Date:</b> <code>{expiry_str_in_ist}</code>\n"
+            f"♾️ <b>Daily Quota:</b> <b>Unlimited Downloads (No Quota Limit) 🚀</b>\n\n"
+            f"<i>Enjoy crystal clear ad-free movies darling! 😏🍿</i>"
+        )
     else:
-        await message.reply_text(f"ʜᴇʏ {user},\n\nʏᴏᴜ ᴅᴏ ɴᴏᴛ ʜᴀᴠᴇ ᴀɴʏ ᴀᴄᴛɪᴠᴇ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴs, ɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ ᴛʜᴇɴ ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ 👇",
-	reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💸 ᴄʜᴇᴄᴋᴏᴜᴛ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ 💸", callback_data='premium_pm')]]))			 
+        count = await db.files_count(user_id, "files_count") or 0
+        limit = FILE_LIMITE
+        remaining = max(0, limit - count)
+        hours, minutes, _ = get_time_until_midnight_ist()
+        await message.reply_text(
+            f"👤 <b>Hey {user} cutie 😏</b>\n\n"
+            f"⚡ <b>Tier:</b> <code>Free Member</code>\n"
+            f"📁 <b>Daily File Quota:</b> <code>{count} / {limit} files</code>\n"
+            f"⏳ <b>Bacha Hai:</b> <code>{remaining} files</code> aaj ke liye\n"
+            f"🕛 <b>Midnight Reset In:</b> <code>{hours}h {minutes}m</code> (11:59 PM IST)\n\n"
+            f"<i>Baby, daily limits se azadi chahiye toh VIP le lo aur enjoy karo unlimited files! 🍿👑</i>",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("👑 Uɴʟᴏᴄᴋ Uɴʟɪᴍɪᴛᴇᴅ VIP (Nᴏ Lɪᴍɪᴛꜱ) 👑", callback_data='premium_pm')]])
+        )			 
 
 @Client.on_message(filters.command("get_premium") & filters.user(ADMINS))
 async def get_premium(client, message):
