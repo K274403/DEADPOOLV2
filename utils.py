@@ -365,6 +365,84 @@ async def is_subscribed(bot, user_id, channel_id):
             return True
     return False
 
+_FSUB_INVITE_CACHE = {}
+
+async def get_fsub_invite_link(bot, channel_id):
+    channel_id = int(channel_id)
+    if channel_id in _FSUB_INVITE_CACHE:
+        return _FSUB_INVITE_CACHE[channel_id]
+    try:
+        chat = await bot.get_chat(channel_id)
+        if chat.username:
+            link = f"https://t.me/{chat.username}"
+            _FSUB_INVITE_CACHE[channel_id] = link
+            return link
+    except Exception:
+        pass
+
+    try:
+        invite = await bot.create_chat_invite_link(channel_id, creates_join_request=True)
+        _FSUB_INVITE_CACHE[channel_id] = invite.invite_link
+        return invite.invite_link
+    except Exception:
+        pass
+
+    try:
+        link = await bot.export_chat_invite_link(channel_id)
+        _FSUB_INVITE_CACHE[channel_id] = link
+        return link
+    except Exception as e:
+        logger.error(f"Error generating invite link for {channel_id}: {e}")
+        return f"https://t.me/{temp.U_NAME}"
+
+
+async def get_fsub_channels(grp_id=0):
+    channels = []
+    # 1. Group level setting if in group
+    if grp_id:
+        try:
+            settings = await get_settings(int(grp_id))
+            grp_fsub = settings.get("fsub_id")
+            if grp_fsub:
+                if isinstance(grp_fsub, list):
+                    for c in grp_fsub:
+                        if c and int(c) != 0 and int(c) not in channels:
+                            channels.append(int(c))
+                elif int(grp_fsub) != 0 and int(grp_fsub) not in channels:
+                    channels.append(int(grp_fsub))
+        except Exception:
+            pass
+
+    # 2. Dynamic multi-channels from database
+    try:
+        db_channels = await db.get_setting("FSUB_CHANNELS", default=[])
+        if db_channels and isinstance(db_channels, list):
+            for c in db_channels:
+                if c and int(c) != 0 and int(c) not in channels:
+                    channels.append(int(c))
+    except Exception:
+        pass
+
+    # 3. Default environment AUTH_CHANNEL if no other channels are configured
+    if not channels and AUTH_CHANNEL and str(AUTH_CHANNEL) != "0":
+        channels.append(int(AUTH_CHANNEL))
+
+    return channels
+
+
+async def get_unsubscribed_channels(bot, user_id, channel_ids):
+    unsubscribed = []
+    for ch_id in channel_ids:
+        try:
+            if await db.find_join_req(user_id):
+                continue
+            is_sub = await is_subscribed(bot, user_id, int(ch_id))
+            if not is_sub:
+                unsubscribed.append(int(ch_id))
+        except Exception as e:
+            logger.error(f"Error checking sub for {user_id} in {ch_id}: {e}")
+    return unsubscribed
+
 async def get_poster(query, bulk=False, id=False, file=None):
     if not imdb:
         return None

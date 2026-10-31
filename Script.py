@@ -117,6 +117,12 @@ NOTIFICATION_MESSAGES = {
         "Nice downloading darling 😈 lekin daily quota limit poora ho chuka hai!",
         "Quota full sweetheart 😏 Raat 11:59 PM IST par reset hoga ya VIP join karo!",
     ],
+    "force_sub": [
+        "Pehle channel join karo meri jaan 😏 fir milegi movie!",
+        "Join button tumhara wait kar raha hai baby 😏 channel join karo na!",
+        "Aww cutie 😏 channel join karna compulsory hai, jaldi join kar lo!",
+        "Uff jaan 😉 channel join karo fir movie instant milegi!",
+    ],
     "unlock_bot": [
         "Aww 😏 pehle bot unlock karo, phir movie milegi.",
         "Hmm 😉 bot ko unlock kar do, cutie.",
@@ -290,7 +296,7 @@ def get_random_message(category, *args):
             index = random.randrange(len(messages))
     _NOTIFICATION_LAST_USED[category] = index
     message = messages[index].format(*args)
-    if category in {"not_your_file", "file_not_found", "premium_required", "send_all_vip", "shortener_bypass_vip", "resolution_locked", "daily_quota_full", "error", "select_language", "select_quality", "select_season", "select_episode", "select_year", "select_sort", "sort_applied", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
+    if category in {"not_your_file", "file_not_found", "premium_required", "send_all_vip", "shortener_bypass_vip", "resolution_locked", "daily_quota_full", "force_sub", "error", "select_language", "select_quality", "select_season", "select_episode", "select_year", "select_sort", "sort_applied", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
         message = message[:197] + "..."
     return message
 
@@ -340,9 +346,11 @@ Note: = ᴘᴇʀ ʀᴇғғᴇʀ 10 ᴘᴏɪɴᴛ
 ____________________________
 ʙᴜʏ ᴘᴀɪᴅ ᴘʟᴀɴ ʙʏ - /plans</b>"""
 
-    FSUB_TXT = """<i><b>🙁 ғɪʀꜱᴛ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟ ᴛʜᴇɴ ʏᴏᴜ ᴡɪʟʟ ɢᴇᴛ ᴍᴏᴠɪᴇ, ᴏᴛʜᴇʀᴡɪꜱᴇ ʏᴏᴜ ᴡɪʟʟ ɴᴏᴛ ɢᴇᴛ ɪᴛ.
+    FSUB_TXT = """<b>Pehle channel join karo meri jaan 😏 fir milegi movie!</b>
 
-ᴄʟɪᴄᴋ ᴊᴏɪɴ ɴᴏᴡ ʙᴜᴛᴛᴏɴ 👇</b></i>"""
+<i>Hey {}, movie download karne ke liye hamare update channels join karna zaroori hai cutie.
+
+Neeche diye gaye buttons se channels join karo, fir <b>Try Again</b> par click karo baby! 👇</i>"""
 
     VERIFICATION_TEXT = """<b>ʜᴇʏ {}, cutie 😏
 

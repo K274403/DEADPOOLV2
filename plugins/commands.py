@@ -20,14 +20,19 @@ from database.users_chats_db import db
 from database.Lootere_reffer import sdb
 from info import *
 from .pm_filter import auto_filter
-from utils import get_settings, get_size, is_subscribed, is_req_subscribed, save_group_settings, temp, get_shortlink, get_seconds, is_file_locked, clean_file_name
+from utils import (
+    get_settings, get_size, is_subscribed, is_req_subscribed,
+    save_group_settings, temp, get_shortlink, get_seconds,
+    is_file_locked, clean_file_name, get_fsub_channels,
+    get_unsubscribed_channels, get_fsub_invite_link
+)
 from database.connections_mdb import active_connection
 import re
 import json
 import base64
 logger = logging.getLogger(__name__)
 
-TIMEZONE = "Asia/KKolkata"
+TIMEZONE = "Asia/Kolkata"
 
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
@@ -219,50 +224,33 @@ async def start(client, message):
             grp_id = int(grp_id)
         except:
             pre, grp_id, file_id = "", 0, data
-        settings = await get_settings(int(grp_id)) if grp_id else {}
-        if settings.get('fsub_id', AUTH_CHANNEL) == AUTH_REQ_CHANNEL:
-            if AUTH_REQ_CHANNEL and not await is_req_subscribed(client, message):
-                try:
-                    invite_link = await client.create_chat_invite_link(int(AUTH_REQ_CHANNEL), creates_join_request=True)
-                except ChatAdminRequired:
-                    logger.error("Make sure Bot is admin in Forcesub channel")
-                    return
-                btn = [[
-                    InlineKeyboardButton("⛔️ ᴊᴏɪɴ ɴᴏᴡ ⛔️", url=invite_link.invite_link)
-                ]]
-                if message.command[1] != "subscribe":
-                    if data.startswith("allfiles"):
-                        btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start=allfiles_{grp_id}_{file_id}")])
-                    else:
-                        btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start=files_{grp_id}_{file_id}")])
-                await client.send_message(
-                    chat_id=message.from_user.id,
-                    text=script.FSUB_TXT.format(message.from_user.mention),
-                    reply_markup=InlineKeyboardMarkup(btn),
-                    parse_mode=enums.ParseMode.HTML
-                )
-                return
-        else:
-            id = settings.get('fsub_id', AUTH_CHANNEL)
-            channel = int(id)
-            if settings.get('fsub_id', AUTH_CHANNEL) and not await is_subscribed(client, message.from_user.id, channel):
-                invite_link = await client.create_chat_invite_link((channel), creates_join_request=True)
-                btn = [[
-                        InlineKeyboardButton("⛔️ ᴊᴏɪɴ ɴᴏᴡ ⛔️", url=invite_link.invite_link)
-                      ]]
-                if message.command[1] != "subscribe":
-                    if data.startswith("allfiles"):
-                        btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start=allfiles_{grp_id}_{file_id}")])
-                    else:
-                        btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start=files_{grp_id}_{file_id}")])
-                await client.send_message(
-                    chat_id=message.from_user.id,
-                    text=script.FSUB_TXT.format(message.from_user.mention),
-                    reply_markup=InlineKeyboardMarkup(btn),
-                    parse_mode=enums.ParseMode.HTML
-                )
-                return
         is_vip = user_id in ADMINS or str(user_id) in ADMINS or await db.has_premium_access(user_id)
+        if not is_vip:
+            fsub_channels = await get_fsub_channels(grp_id)
+            if fsub_channels:
+                unsubscribed = await get_unsubscribed_channels(client, message.from_user.id, fsub_channels)
+                if unsubscribed:
+                    btn = []
+                    for idx, ch_id in enumerate(unsubscribed):
+                        invite_link = await get_fsub_invite_link(client, ch_id)
+                        try:
+                            ch_obj = await client.get_chat(ch_id)
+                            ch_title = ch_obj.title or f"Channel {idx+1}"
+                        except Exception:
+                            ch_title = f"Channel {idx+1}"
+                        btn.append([InlineKeyboardButton(f"⛔️ ᴊᴏɪɴ {ch_title} ⛔️", url=invite_link)])
+                    if message.command[1] != "subscribe":
+                        if data.startswith("allfiles"):
+                            btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start=allfiles_{grp_id}_{file_id}")])
+                        else:
+                            btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start=files_{grp_id}_{file_id}")])
+                    await client.send_message(
+                        chat_id=message.from_user.id,
+                        text=script.FSUB_TXT.format(message.from_user.mention),
+                        reply_markup=InlineKeyboardMarkup(btn),
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                    return
         if not is_vip:
             if Lootere.command[1].startswith('allfiles') or Lootere.command[1].startswith('sendall'):
                 buttons = [[
@@ -941,51 +929,221 @@ async def save_caption(client, message):
 
 @Client.on_message(filters.command('set_fsub'))
 async def set_fsub(client, message):
+    is_bot_admin = message.from_user.id in ADMINS or str(message.from_user.id) in ADMINS
     chat_type = message.chat.type
-    if chat_type not in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
-        return await message.reply_text("<b>ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ɪɴ ɢʀᴏᴜᴘ...</b>")
-    grp_id = message.chat.id
-    title = message.chat.title
-    user = await client.get_chat_member(message.chat.id, message.from_user.id)
-    owner=user.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER] or str(message.from_user.id) in ADMINS
-    if not owner:
-        return await message.reply_text('<b>ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴅᴍɪɴ ɪɴ ᴛʜɪꜱ ɢʀᴏᴜᴘ</b>')
+
+    # Support both PM (global dynamic channels for bot admins) and Group (group force-sub)
+    if chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+        grp_id = message.chat.id
+        title = message.chat.title
+        user = await client.get_chat_member(message.chat.id, message.from_user.id)
+        owner = user.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER] or is_bot_admin
+        if not owner:
+            return await message.reply_text('<b>ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴅᴍɪɴ ɪɴ ᴛʜɪꜱ ɢʀᴏᴜᴘ</b>')
+        
+        args = message.text.split()[1:]
+        if not args:
+            return await message.reply_text("<b>ᴄᴏᴍᴍᴀɴᴅ ɪɴᴄᴏᴍᴘʟᴇᴛᴇ\n\nꜱᴇɴᴅ ᴍᴇ ᴄʜᴀɴɴᴇʟ ɪᴅ(ꜱ) ᴡɪᴛʜ ᴄᴏᴍᴍᴀɴᴅ, ʟɪᴋᴇ:\n<code>/set_fsub -1001234567890</code>\n(Multiple: <code>/set_fsub -100123 -100456</code>)</b>")
+
+        valid_channels = []
+        titles = []
+        for raw_id in args:
+            try:
+                ch_id = int(raw_id)
+                chat = await client.get_chat(ch_id)
+                if chat.type != enums.ChatType.CHANNEL:
+                    return await message.reply_text(f"🫥 <code>{ch_id}</code> ᴛʜɪꜱ ɪꜱ ɴᴏᴛ ᴄʜᴀɴɴᴇʟ, ꜱᴇɴᴅ ᴍᴇ ᴏɴʟʏ ᴄʜᴀɴɴᴇʟ ɪᴅ ɴᴏᴛ ɢʀᴏᴜᴘ ɪᴅ</b>")
+                valid_channels.append(ch_id)
+                titles.append(f"• {chat.title} (<code>{ch_id}</code>)")
+            except Exception as e:
+                return await message.reply_text(f"<b><code>{raw_id}</code> ɪꜱ ɪɴᴠᴀʟɪᴅ or bot is not admin in that channel.\n<code>{e}</code></b>")
+
+        await save_group_settings(grp_id, 'fsub_id', valid_channels if len(valid_channels) > 1 else valid_channels[0])
+        mention = message.from_user.mention
+        chnl_list_str = "\n".join(titles)
+        if LOG_CHANNEL:
+            try:
+                await client.send_message(LOG_CHANNEL, f"#Fsub_Channel_Set\n\nUser: {mention}\nGroup: {title}\nChannels:\n{chnl_list_str}")
+            except Exception:
+                pass
+        return await message.reply_text(f"<b>Haan meri jaan 😏 Force-Sub set ho gaya for {title}!\n\nActive Channels:\n{chnl_list_str}</b>")
+
+    else:
+        # Private Message -> Global dynamic force-sub for bot admins
+        if not is_bot_admin:
+            return await message.reply_text("<b>Sirf bot admin hi global Force-Sub channels set kar sakte hain meri jaan 😏</b>")
+        args = message.text.split()[1:]
+        if not args:
+            return await message.reply_text("<b>Give channel ID(s) baby!\n\nExample:\n<code>/set_fsub -1001234567890</code>\nOr multiple:\n<code>/set_fsub -1001111 -1002222</code></b>")
+
+        valid_channels = []
+        titles = []
+        for raw_id in args:
+            try:
+                ch_id = int(raw_id)
+                chat = await client.get_chat(ch_id)
+                if chat.type != enums.ChatType.CHANNEL:
+                    return await message.reply_text(f"🫥 <code>{ch_id}</code> is not a channel.")
+                valid_channels.append(ch_id)
+                titles.append(f"• {chat.title} (<code>{ch_id}</code>)")
+            except Exception as e:
+                return await message.reply_text(f"<b>Error with channel <code>{raw_id}</code>:</b> {e}\n<i>Make sure bot is admin there!</i>")
+
+        await db.set_setting("FSUB_CHANNELS", valid_channels)
+        chnl_list_str = "\n".join(titles)
+        return await message.reply_text(f"<b>Haan baby 😏 Global Force-Sub Channels update ho gaye!\n\nActive Channels:\n{chnl_list_str}\n\nAb bina join kiye koi movie nahi le ja sakta 🔒</b>")
+
+
+@Client.on_message(filters.command('add_fsub'))
+async def add_fsub(client, message):
+    is_bot_admin = message.from_user.id in ADMINS or str(message.from_user.id) in ADMINS
+    chat_type = message.chat.type
+
+    args = message.text.split()[1:]
+    if not args:
+        return await message.reply_text("<b>Channel ID to batao meri jaan 😏\n\nExample: <code>/add_fsub -1001234567890</code></b>")
+
+    if chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+        grp_id = message.chat.id
+        user = await client.get_chat_member(message.chat.id, message.from_user.id)
+        owner = user.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER] or is_bot_admin
+        if not owner:
+            return await message.reply_text('<b>ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴅᴍɪɴ ɪɴ ᴛʜɪꜱ ɢʀᴏᴜᴘ</b>')
+        
+        current_channels = await get_fsub_channels(grp_id)
+        added_titles = []
+        for raw_id in args:
+            try:
+                ch_id = int(raw_id)
+                chat = await client.get_chat(ch_id)
+                if ch_id not in current_channels:
+                    current_channels.append(ch_id)
+                    added_titles.append(f"• {chat.title} (<code>{ch_id}</code>)")
+            except Exception as e:
+                return await message.reply_text(f"<b>Error with <code>{raw_id}</code>:</b> {e}")
+        
+        await save_group_settings(grp_id, 'fsub_id', current_channels)
+        return await message.reply_text(f"<b>Channel add ho gaya baby 😏 Total active channels: {len(current_channels)}\n\n" + "\n".join(added_titles) + "</b>")
+    else:
+        if not is_bot_admin:
+            return await message.reply_text("<b>Sirf bot admin hi channels add kar sakte hain baby 😏</b>")
+        current_channels = await db.get_setting("FSUB_CHANNELS", default=[])
+        if not isinstance(current_channels, list):
+            current_channels = [current_channels] if current_channels else []
+
+        added_titles = []
+        for raw_id in args:
+            try:
+                ch_id = int(raw_id)
+                chat = await client.get_chat(ch_id)
+                if ch_id not in current_channels:
+                    current_channels.append(ch_id)
+                    added_titles.append(f"• {chat.title} (<code>{ch_id}</code>)")
+            except Exception as e:
+                return await message.reply_text(f"<b>Error with <code>{raw_id}</code>:</b> {e}")
+
+        await db.set_setting("FSUB_CHANNELS", current_channels)
+        return await message.reply_text(f"<b>Channel add ho gaya meri jaan 😏 Ab total {len(current_channels)} channels hain force-sub me!\n\n" + "\n".join(added_titles) + "</b>")
+
+
+@Client.on_message(filters.command('del_fsub'))
+async def del_fsub(client, message):
+    is_bot_admin = message.from_user.id in ADMINS or str(message.from_user.id) in ADMINS
+    chat_type = message.chat.type
+
+    args = message.text.split()[1:]
+    if not args:
+        return await message.reply_text("<b>Konsa channel hatana hai baby? ID do 😏\n\nExample: <code>/del_fsub -1001234567890</code></b>")
+
     try:
-        channel_id = int(message.text.split(" ", 1)[1])
-    except IndexError:
-        return await message.reply_text("<b>ᴄᴏᴍᴍᴀɴᴅ ɪɴᴄᴏᴍᴘʟᴇᴛᴇ\n\nꜱᴇɴᴅ ᴍᴇ ᴄʜᴀɴɴᴇʟ ɪᴅ ᴡɪᴛʜ ᴄᴏᴍᴍᴀɴᴅ, ʟɪᴋᴇ <code>/set_fsub -100******</code></b>")
+        target_id = int(args[0])
     except ValueError:
-        return await message.reply_text('<b>ᴍᴀᴋᴇ ꜱᴜʀᴇ ᴛʜᴇ ɪᴅ ɪꜱ ᴀɴ ɪɴᴛᴇɢᴇʀ.</b>')
-    try:
-        chat = await client.get_chat(channel_id)
-    except Exception as e:
-        return await message.reply_text(f"<b><code>{channel_id}</code> ɪꜱ ɪɴᴠᴀʟɪᴅ. ᴍᴀᴋᴇ ꜱᴜʀᴇ <a href=https://t.me/{temp.B_LINK} ʙᴏᴛ</a> ɪꜱ ᴀᴅᴍɪɴ ɪɴ ᴛʜᴀᴛ ᴄʜᴀɴɴᴇʟ\n\n<code>{e}</code></b>")
-    if chat.type != enums.ChatType.CHANNEL:
-        return await message.reply_text(f"🫥 <code>{channel_id}</code> ᴛʜɪꜱ ɪꜱ ɴᴏᴛ ᴄʜᴀɴɴᴇʟ, ꜱᴇɴᴅ ᴍᴇ ᴏɴʟʏ ᴄʜᴀɴɴᴇʟ ɪᴅ ɴᴏᴛ ɢʀᴏᴜᴘ ɪᴅ</b>")
-    await save_group_settings(grp_id, 'fsub_id', channel_id)
-    mention = message.from_user.mention
-    await client.send_message(LOG_CHANNEL, f"#Fsub_Channel_set\n\nUser - {mention} set the force channel for {title}:\n\nFsub channel - {chat.title}\nId - `{channel_id}`")
-    await message.reply_text(f"<b>ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ꜱᴇᴛ ꜰᴏʀᴄᴇ ꜱᴜʙꜱᴄʀɪʙᴇ ᴄʜᴀɴɴᴇʟ ꜰᴏʀ {title}\n\nᴄʜᴀɴɴᴇʟ ɴᴀᴍᴇ - {chat.title}\nɪᴅ - <code>{channel_id}</code></b>")
+        return await message.reply_text("<b>Invalid channel ID baby! Integer ID bhejo.</b>")
+
+    if chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+        grp_id = message.chat.id
+        user = await client.get_chat_member(message.chat.id, message.from_user.id)
+        owner = user.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER] or is_bot_admin
+        if not owner:
+            return await message.reply_text('<b>ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴅᴍɪɴ ɪɴ ᴛʜɪꜱ ɢʀᴏᴜᴘ</b>')
+        
+        current_channels = await get_fsub_channels(grp_id)
+        if target_id in current_channels:
+            current_channels.remove(target_id)
+            await save_group_settings(grp_id, 'fsub_id', current_channels)
+            return await message.reply_text(f"<b>Channel <code>{target_id}</code> hata diya meri jaan 😌 Total bache: {len(current_channels)}</b>")
+        else:
+            return await message.reply_text("<b>Ye channel to list me tha hi nahi baby!</b>")
+    else:
+        if not is_bot_admin:
+            return await message.reply_text("<b>Sirf bot admin hi channels delete kar sakte hain baby 😏</b>")
+        current_channels = await db.get_setting("FSUB_CHANNELS", default=[])
+        if not isinstance(current_channels, list):
+            current_channels = [current_channels] if current_channels else []
+
+        if target_id in current_channels:
+            current_channels.remove(target_id)
+            await db.set_setting("FSUB_CHANNELS", current_channels)
+            return await message.reply_text(f"<b>Channel <code>{target_id}</code> successfully delete kar diya meri jaan 😌 Total bache: {len(current_channels)}</b>")
+        else:
+            return await message.reply_text("<b>Ye channel to active list me tha hi nahi baby!</b>")
+
+
+@Client.on_message(filters.command(['fsub_list', 'get_fsub']))
+async def fsub_list(client, message):
+    chat_type = message.chat.type
+
+    grp_id = message.chat.id if chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP] else 0
+    channels = await get_fsub_channels(grp_id)
+
+    if not channels:
+        return await message.reply_text("<b>Abhi koi Force-Sub channel configured nahi hai baby 😌 Sab open hai!</b>")
+
+    text = f"<b>✨ <u>Active Force-Sub Channels ({len(channels)})</u> ✨</b>\n\n"
+    for idx, ch_id in enumerate(channels, 1):
+        try:
+            chat = await client.get_chat(ch_id)
+            invite_link = await get_fsub_invite_link(client, ch_id)
+            text += f"<b>{idx}. <a href='{invite_link}'>{chat.title}</a></b>\n"
+            text += f"   • <b>ID:</b> <code>{ch_id}</code>\n"
+            text += f"   • <b>Username:</b> @{chat.username if chat.username else 'Private'}\n"
+            text += f"   • <b>Link:</b> {invite_link}\n\n"
+        except Exception as e:
+            text += f"<b>{idx}. Channel <code>{ch_id}</code></b>\n   • <i>Status: Error ({e}) - Check bot admin!</i>\n\n"
+
+    text += "<i>Dekh lo meri jaan, ye sab channels members ko join karne padenge movies ke liye 😏</i>"
+    await message.reply_text(text, disable_web_page_preview=True)
+
 
 @Client.on_message(filters.command('remove_fsub'))
 async def remove_fsub(client, message):
+    is_bot_admin = message.from_user.id in ADMINS or str(message.from_user.id) in ADMINS
     chat_type = message.chat.type
-    if chat_type not in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
-        return await message.reply_text("<b>ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ɪɴ ɢʀᴏᴜᴘ...</b>")       
-    grp_id = message.chat.id
-    title = message.chat.title
-    user = await client.get_chat_member(message.chat.id, message.from_user.id)
-    owner=user.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER] or str(message.from_user.id) in ADMINS
-    if not owner:
-        return await message.reply_text('<b>ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴅᴍɪɴ ɪɴ ᴛʜɪꜱ ɢʀᴏᴜᴘ</b>')
-    settings = await get_settings(grp_id)
-    if settings["fsub_id"] == AUTH_CHANNEL:
-        await message.reply_text("<b>ᴄᴜʀʀᴇɴᴛʟʏ ɴᴏ ᴀɴʏ ғᴏʀᴄᴇ ꜱᴜʙ ᴄʜᴀɴɴᴇʟ.... <code>[ᴅᴇғᴀᴜʟᴛ ᴀᴄᴛɪᴠᴀᴛᴇ]</code></b>")
+
+    if chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+        grp_id = message.chat.id
+        title = message.chat.title
+        user = await client.get_chat_member(message.chat.id, message.from_user.id)
+        owner = user.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER] or is_bot_admin
+        if not owner:
+            return await message.reply_text('<b>ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴅᴍɪɴ ɪɴ ᴛʜɪꜱ ɢʀᴏᴜᴘ</b>')
+        settings = await get_settings(grp_id)
+        if settings.get("fsub_id") == AUTH_CHANNEL:
+            await message.reply_text("<b>ᴄᴜʀʀᴇɴᴛʟʏ ɴᴏ ᴀɴʏ ғᴏʀᴄᴇ ꜱᴜʙ ᴄʜᴀɴɴᴇʟ.... <code>[ᴅᴇғᴀᴜʟᴛ ᴀᴄᴛɪᴠᴀᴛᴇ]</code></b>")
+        else:
+            await save_group_settings(grp_id, 'fsub_id', AUTH_CHANNEL)
+            mention = message.from_user.mention
+            if LOG_CHANNEL:
+                try:
+                    await client.send_message(LOG_CHANNEL, f"#Remove_Fsub_Channel\n\nUser - {mention} removed fsub channel from {title}")
+                except Exception:
+                    pass
+            await message.reply_text("<b>✅ Saare custom Force-Sub channels hata diye baby 😌 Ab default mode on hai!</b>")
     else:
-        await save_group_settings(grp_id, 'fsub_id', AUTH_CHANNEL)
-        mention = message.from_user.mention
-        await client.send_message(LOG_CHANNEL, f"#Remove_Fsub_Channel\n\nUser - {mention} he remove fsub channel from {title}")
-        await message.reply_text(f"<b>✅ ꜱᴜᴄᴄᴇꜱꜱғᴜʟʟʏ ʀᴇᴍᴏᴠᴇᴅ ғᴏʀᴄᴇ ꜱᴜʙ ᴄʜᴀɴɴᴇʟ.</b>")         
+        if not is_bot_admin:
+            return await message.reply_text("<b>Sirf bot admin hi clear kar sakte hain baby 😏</b>")
+        await db.set_setting("FSUB_CHANNELS", [])
+        await message.reply_text("<b>✅ Global Force-Sub channels reset kar diye meri jaan 😌 Ab default AUTH_CHANNEL activate hai!</b>")         
 
 @Client.on_message(filters.command('set_log'))
 async def set_log(client, message):
