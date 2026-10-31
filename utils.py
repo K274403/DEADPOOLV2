@@ -214,6 +214,29 @@ def sort_files(files, sort_by='season'):
         return sort_files_season_first(files)
 
 
+def is_file_locked(file_name: str) -> bool:
+    """
+    Checks if a file has a locked high resolution (4K / 2160p / 1440p / 1080p).
+    """
+    if not file_name:
+        return False
+    name_lower = str(file_name).lower()
+    return any(q in name_lower for q in ['2160p', '4k', '1440p', '1080p', 'fhd', 'uhd'])
+
+
+def format_file_button_label(file_name: str, file_size: int, is_vip: bool = False) -> str:
+    """
+    Formats the file button text:
+    - Normal / VIP: 🔵 [size] filename
+    - Free user with locked 1080p/4K resolution: 🟡 🔒 [{size}] {filename} [VIP]
+    """
+    cleaned = clean_file_name(file_name)
+    size_str = get_size(file_size)
+    if not is_vip and is_file_locked(file_name):
+        return f"🟡 🔒 [{size_str}] {cleaned} [VIP]"
+    return f"🔵 [{size_str}] {cleaned}"
+
+
 def make_search_filter_buttons(req, key, active_filter=None):
     """
     Builds the standard RKMOVIESZIP Search Result interactive control buttons:
@@ -613,19 +636,25 @@ async def get_text(settings, remaining_seconds, files, query, total_results, sea
                         **locals()
                     )
                     for file in files:
-                        cap += f"\n\n<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>🔵 {get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}</a></b>"
+                        badge = "🟡 🔒 " if is_file_locked(file.file_name) else "🔵 "
+                        vip_tag = " [VIP]" if is_file_locked(file.file_name) else ""
+                        cap += f"\n\n<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>{badge}{get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}{vip_tag}</a></b>"
                 else:
                     cap = f"{CAPTION}" #imdb = false
                     cap+="<b>📚 <u>Your Requested Files</u> 👇\n\n</b>"
                     for file in files:
-                        cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>🔵 {get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}\n\n</a></b>"
+                        badge = "🟡 🔒 " if is_file_locked(file.file_name) else "🔵 "
+                        vip_tag = " [VIP]" if is_file_locked(file.file_name) else ""
+                        cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>{badge}{get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}{vip_tag}\n\n</a></b>"
     
         else:
             #imdb = false
             cap = f"☠️ ᴛɪᴛʟᴇ : <code>{search}</code>\n📂 ᴛᴏᴛᴀʟ ꜰɪʟᴇꜱ : <code>{total_results}</code>\n📝 ʀᴇǫᴜᴇsᴛᴇᴅ ʙʏ : {query.from_user.first_name}\n⏰ ʀᴇsᴜʟᴛ ɪɴ : <code>{remaining_seconds}\n\n</b>"
             cap+="<b>📚 <u>Your Requested Files</u> 👇\n\n</b>"
             for file in files:
-                cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>🔵 {get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}\n\n</a></b>"
+                badge = "🟡 🔒 " if is_file_locked(file.file_name) else "🔵 "
+                vip_tag = " [VIP]" if is_file_locked(file.file_name) else ""
+                cap += f"<b><a href='https://telegram.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file.file_id}'>{badge}{get_size(file.file_size)} ▷ {clean_file_name(file.file_name)}{vip_tag}\n\n</a></b>"
         return cap
     except Exception as e:
         await query.answer(f"{e}", show_alert=True)

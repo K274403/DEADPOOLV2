@@ -19,7 +19,7 @@ from info import *
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto, InputMediaVideo
 from pyrogram import Client, filters, enums
 from pyrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerIdInvalid
-from utils import get_size, is_subscribed, get_poster, temp, get_settings, save_group_settings, get_shortlink, stream_site, get_text, imdb, clean_file_name, sort_files_season_first, sort_files, make_search_filter_buttons, extract_year
+from utils import get_size, is_subscribed, get_poster, temp, get_settings, save_group_settings, get_shortlink, stream_site, get_text, imdb, clean_file_name, sort_files_season_first, sort_files, make_search_filter_buttons, extract_year, is_file_locked, format_file_button_label
 from database.users_chats_db import db
 from database.Lootere_reffer import sdb
 from database.ia_filterdb import Media, get_file_details, get_search_results, get_bad_files
@@ -203,11 +203,12 @@ async def next_page(bot, query):
         settings = await get_settings(query.message.chat.id)
         temp.GETALL[key] = files
         temp.CHAT[query.from_user.id] = query.message.chat.id
+        is_vip = query.from_user.id in ADMINS or str(query.from_user.id) in ADMINS or await db.has_premium_access(query.from_user.id)
         if not settings.get('button', SINGLE_BUTTON):
             btn = [
                 [
                     InlineKeyboardButton(
-                        text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                        text=format_file_button_label(file.file_name, file.file_size, is_vip), callback_data=f'files#{file.file_id}'
                     ),
                 ]
                 for file in files
@@ -336,11 +337,12 @@ async def language_check(bot, query):
             settings = await get_settings(query.message.chat.id)
             temp.GETALL[key] = files
             temp.CHAT[query.from_user.id] = query.message.chat.id
+            is_vip = query.from_user.id in ADMINS or str(query.from_user.id) in ADMINS or await db.has_premium_access(query.from_user.id)
             if not settings.get('button', SINGLE_BUTTON):
                 btn = [
                     [
                         InlineKeyboardButton(
-                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                            text=format_file_button_label(file.file_name, file.file_size, is_vip), callback_data=f'files#{file.file_id}'
                         ),
                     ]
                     for file in files
@@ -426,6 +428,9 @@ async def quality_check(bot, query):
             return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         if quality == "unknown":
             return await query.answer(get_random_message("select_quality"), show_alert=True)
+        is_vip = query.from_user.id in ADMINS or str(query.from_user.id) in ADMINS or await db.has_premium_access(query.from_user.id)
+        if not is_vip and any(q in quality.lower() for q in ['1080', '1440', '2160', '4k']):
+            return await query.answer(get_random_message("resolution_locked"), show_alert=True)
         movie = temp.KEYWORD.get(query.from_user.id, "")
         if quality != "home":
             target_q = "1080p" if "1080" in quality else ("720p" if "720" in quality else quality)
@@ -448,7 +453,7 @@ async def quality_check(bot, query):
                 btn = [
                     [
                         InlineKeyboardButton(
-                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                            text=format_file_button_label(file.file_name, file.file_size, is_vip), callback_data=f'files#{file.file_id}'
                         ),
                     ]
                     for file in files
@@ -495,17 +500,18 @@ async def select_quality(bot, query):
     curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
     if int(userid) not in [query.from_user.id, 0]:
         return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
+    is_vip = query.from_user.id in ADMINS or str(query.from_user.id) in ADMINS or await db.has_premium_access(query.from_user.id)
     btn = [[
         InlineKeyboardButton("🎥 Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴇꜱɪʀᴇᴅ Qᴜᴀʟɪᴛʏꜱ ↓", callback_data=f"lusifilms#{userid}#unknown")
     ],[
         InlineKeyboardButton("480p", callback_data=f"lusifilms#{userid}#480p"),
         InlineKeyboardButton("720p", callback_data=f"lusifilms#{userid}#720p")
     ],[
-        InlineKeyboardButton("1080p", callback_data=f"lusifilms#{userid}#1080p"),
-        InlineKeyboardButton("1080p HQ", callback_data=f"lusifilms#{userid}#1080p HQ")
+        InlineKeyboardButton("1080p" if is_vip else "🔒 1080p [VIP]", callback_data=f"lusifilms#{userid}#1080p"),
+        InlineKeyboardButton("1080p HQ" if is_vip else "🔒 1080p HQ [VIP]", callback_data=f"lusifilms#{userid}#1080p HQ")
     ],[
-        InlineKeyboardButton("1440p (2K)", callback_data=f"lusifilms#{userid}#1440p"),
-        InlineKeyboardButton("2160p (4K)", callback_data=f"lusifilms#{userid}#2160p")
+        InlineKeyboardButton("1440p (2K)" if is_vip else "🔒 1440p (2K) [VIP]", callback_data=f"lusifilms#{userid}#1440p"),
+        InlineKeyboardButton("2160p (4K)" if is_vip else "🔒 2160p (4K) [VIP]", callback_data=f"lusifilms#{userid}#2160p")
     ],[
         InlineKeyboardButton("🟢 ⇦ Gᴏ Bᴀᴄᴋ", callback_data=f"lusifilms#{userid}#home")
     ]]
@@ -639,11 +645,12 @@ async def year_check(bot, query):
             settings = await get_settings(query.message.chat.id)
             temp.GETALL[key] = files
             temp.CHAT[query.from_user.id] = query.message.chat.id
+            is_vip = query.from_user.id in ADMINS or str(query.from_user.id) in ADMINS or await db.has_premium_access(query.from_user.id)
             if not settings.get('button', SINGLE_BUTTON):
                 btn = [
                     [
                         InlineKeyboardButton(
-                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                            text=format_file_button_label(file.file_name, file.file_size, is_vip), callback_data=f'files#{file.file_id}'
                         ),
                     ]
                     for file in files
@@ -726,11 +733,12 @@ async def sort_check(bot, query):
         files = sort_files(files, sort_by=sort_by if sort_by != "home" else "season")
         temp.GETALL[key] = files
         settings = await get_settings(query.message.chat.id)
+        is_vip = query.from_user.id in ADMINS or str(query.from_user.id) in ADMINS or await db.has_premium_access(query.from_user.id)
         if not settings.get('button', SINGLE_BUTTON):
             btn = [
                 [
                     InlineKeyboardButton(
-                        text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                        text=format_file_button_label(file.file_name, file.file_size, is_vip), callback_data=f'files#{file.file_id}'
                     ),
                 ]
                 for file in files
@@ -791,11 +799,12 @@ async def seasons_check(bot, query):
             key = f"{query.message.chat.id}-{query.message.id}"
             temp.GETALL[key] = files
             temp.CHAT[query.from_user.id] = query.message.chat.id
+            is_vip = query.from_user.id in ADMINS or str(query.from_user.id) in ADMINS or await db.has_premium_access(query.from_user.id)
             if not settings.get('button', SINGLE_BUTTON):
                 btn = [
                     [
                         InlineKeyboardButton(
-                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                            text=format_file_button_label(file.file_name, file.file_size, is_vip), callback_data=f'files#{file.file_id}'
                         ),
                     ]
                     for file in files
@@ -889,11 +898,12 @@ async def episode_check(bot, query):
             key = f"{query.message.chat.id}-{query.message.id}"
             temp.GETALL[key] = files
             temp.CHAT[query.from_user.id] = query.message.chat.id
+            is_vip = query.from_user.id in ADMINS or str(query.from_user.id) in ADMINS or await db.has_premium_access(query.from_user.id)
             if not settings.get('button', SINGLE_BUTTON):
                 btn = [
                     [
                         InlineKeyboardButton(
-                            text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                            text=format_file_button_label(file.file_name, file.file_size, is_vip), callback_data=f'files#{file.file_id}'
                         ),
                     ]
                     for file in files
@@ -1217,6 +1227,11 @@ async def cb_handler(client: Client, query: CallbackQuery):
         user = query.message.reply_to_message.from_user.id
         if int(user) != 0 and query.from_user.id != int(user):
             return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
+        is_vip = query.from_user.id in ADMINS or str(query.from_user.id) in ADMINS or await db.has_premium_access(query.from_user.id)
+        if not is_vip:
+            files_ = await get_file_details(file_id)
+            if files_ and is_file_locked(files_[0].file_name):
+                return await query.answer(get_random_message("resolution_locked"), show_alert=True)
         await query.answer(url=f"https://t.me/{temp.U_NAME}?start=files_{query.message.chat.id}_{file_id}")
                  
             
@@ -1977,11 +1992,12 @@ async def auto_filter(client, msg, spoll=False):
         temp.CHAT[message.from_user.id] = message.chat.id
         temp.KEYWORD[message.from_user.id] = search
         req = message.from_user.id if message.from_user else 0
+        is_vip = req in ADMINS or str(req) in ADMINS or await db.has_premium_access(req)
         if not settings.get("button", SINGLE_BUTTON):
             btn = [
                 [
                     InlineKeyboardButton(
-                        text=f"🔵 [{get_size(file.file_size)}] {clean_file_name(file.file_name)}", callback_data=f'files#{file.file_id}'
+                        text=format_file_button_label(file.file_name, file.file_size, is_vip), callback_data=f'files#{file.file_id}'
                     ),
                 ]
                 for file in files

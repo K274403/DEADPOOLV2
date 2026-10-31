@@ -20,7 +20,7 @@ from database.users_chats_db import db
 from database.Lootere_reffer import sdb
 from info import *
 from .pm_filter import auto_filter
-from utils import get_settings, get_size, is_subscribed, is_req_subscribed, save_group_settings, temp, get_shortlink, get_seconds
+from utils import get_settings, get_size, is_subscribed, is_req_subscribed, save_group_settings, temp, get_shortlink, get_seconds, is_file_locked, clean_file_name
 from database.connections_mdb import active_connection
 import re
 import json
@@ -421,6 +421,18 @@ async def start(client, message):
             return await message.reply('Nᴏ sᴜᴄʜ ғɪʟᴇ ᴇxɪsᴛ.')
         
         files = files_[0]
+        # Step 5: Resolution Lock Guard (1080p, 1440p, 4K/2160p are VIP Exclusive)
+        is_vip = message.from_user.id in ADMINS or str(message.from_user.id) in ADMINS or await db.has_premium_access(message.from_user.id)
+        if not is_vip and is_file_locked(files.file_name):
+            buttons = [[
+                InlineKeyboardButton('👑 Uɴʟᴏᴄᴋ VIP Qᴜᴀʟɪᴛʏ (1080p/4K) 👑', callback_data='premium_info')
+            ]]
+            return await message.reply_text(
+                f"<b>Ye Quality VIP Locked hai cutie 😏</b>\n\n"
+                f"📁 <code>{clean_file_name(files.file_name)}</code>\n\n"
+                f"<i>Baby, 1080p aur 4K Ultra HD prints sirf VIP members ke liye hain. VIP unlock karo aur crystal clear prints enjoy karo! 🍿✨</i>",
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
         settings = await get_settings(int(grp_id))
         CAPTION = settings.get('caption', CUSTOM_FILE_CAPTION)
         f_caption = CAPTION.format(
