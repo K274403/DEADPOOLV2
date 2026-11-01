@@ -123,6 +123,11 @@ NOTIFICATION_MESSAGES = {
         "Aww cutie 😏 channel join karna compulsory hai, jaldi join kar lo!",
         "Uff jaan 😉 channel join karo fir movie instant milegi!",
     ],
+    "auto_delete_set": [
+        "Timer set ho gaya meri jaan 😏 Ab files/results {} me automatically delete ho jayenge!",
+        "Haan baby 😏 Auto-delete timer {} par lock kar diya hai!",
+        "Done sweetie 😌 Copyright protection ke liye {} ka timer set hai!",
+    ],
     "unlock_bot": [
         "Aww 😏 pehle bot unlock karo, phir movie milegi.",
         "Hmm 😉 bot ko unlock kar do, cutie.",
@@ -296,12 +301,22 @@ def get_random_message(category, *args):
             index = random.randrange(len(messages))
     _NOTIFICATION_LAST_USED[category] = index
     message = messages[index].format(*args)
-    if category in {"not_your_file", "file_not_found", "premium_required", "send_all_vip", "shortener_bypass_vip", "resolution_locked", "daily_quota_full", "force_sub", "error", "select_language", "select_quality", "select_season", "select_episode", "select_year", "select_sort", "sort_applied", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
+    if category in {"not_your_file", "file_not_found", "premium_required", "send_all_vip", "shortener_bypass_vip", "resolution_locked", "daily_quota_full", "force_sub", "auto_delete_set", "error", "select_language", "select_quality", "select_season", "select_episode", "select_year", "select_sort", "sort_applied", "unlock_bot", "access_denied", "admin_only", "searching", "generic", "referral_points", "checking_database", "reset_success", "index_cancel", "index_wait", "index_processing", "group_not_found", "group_verified", "group_rejected", "already_done", "link_expired"} and len(message) > 200:
         message = message[:197] + "..."
     return message
 
 
 class script(object):
+    FILE_DELETE_TXT = """<b>⚠️ <u>IMPORTANT COPYRIGHT NOTICE</u> ⚠️
+
+Ye movie file <b>{time_str}</b> me automatically delete ho jayegi meri jaan 😏
+
+<i>Please jaldi se ise apne <u>Saved Messages</u> me forward kar lo baby aur wahan se download shuru karo!</i> 🍿</b>"""
+
+    FILE_DELETED_TXT = """<b>Aww 😌 <u>{time_str}</u> pure ho gaye baby!
+
+Copyright protection ke liye aapki requested movie file delete kar di gayi hai. Agar nahi save ki thi toh dubara search kar lo meri jaan 😏</b>"""
+
     START_TXT = """<b><i>ʜᴇʏ 😎</i></b> {},
 <b><blockquote>Iᴍ Tʜᴇ Mᴏsᴛ Aᴅᴠᴀɴᴄᴇ Aɪ Pᴏᴡᴇʀᴅ Bᴏᴛ.🥰
 Jᴜꜱᴛ Sᴇɴᴅ Mᴇ Aɴʏ Mᴏᴠɪᴇꜱ & Sᴇʀɪᴇꜱ Nᴀᴍᴇ Aɴᴅ Sᴇᴇ Mʏ Pᴏᴡᴇʀ.</b></blockquote>

@@ -24,7 +24,9 @@ from utils import (
     get_settings, get_size, is_subscribed, is_req_subscribed,
     save_group_settings, temp, get_shortlink, get_seconds,
     is_file_locked, clean_file_name, get_fsub_channels,
-    get_unsubscribed_channels, get_fsub_invite_link
+    get_unsubscribed_channels, get_fsub_invite_link,
+    parse_duration, format_duration, get_auto_delete_timer,
+    get_file_auto_delete_timer
 )
 from database.connections_mdb import active_connection
 import re
@@ -359,11 +361,24 @@ async def start(client, message):
                 )
                 filesarr.append(msg)
             if await db.get_setting("AUTO_FILE_DELETE", default=AUTO_FILE_DELETE):
-                k = await client.send_message(chat_id = message.from_user.id, text=f"<b><u>❗️❗️❗️IMPORTANT❗️️❗️❗️</u></b>\n\nThis Movie Files/Videos will be deleted in <b><u>10 mins</u> 🫥 <i></b>(Due to Copyright Issues)</i>.\n\n<b><i>Please forward this ALL Files/Videos to your Saved Messages and Start Download there</i></b>")
-                await asyncio.sleep(900)
+                timer_sec = await get_file_auto_delete_timer()
+                timer_str = format_duration(timer_sec)
+                k = await client.send_message(
+                    chat_id=message.from_user.id,
+                    text=f"<b><u>❗️❗️❗️ IMPORTANT COPYRIGHT NOTICE ❗️❗️❗️</u></b>\n\n"
+                         f"Ye saari movie files <b><u>{timer_str}</u></b> me automatically delete ho jayengi meri jaan 😏 <i>(Due to Copyright Issues)</i>.\n\n"
+                         f"<b><i>Jaldi se in ALL Files ko apne <u>Saved Messages</u> me forward kar lo baby aur wahan se download shuru karo!</i> 🍿</b>"
+                )
+                await asyncio.sleep(timer_sec)
                 for x in filesarr:
-                    await x.delete()
-                await k.edit_text("<b>Your All Files/Videos is successfully deleted!!!</b>")
+                    try:
+                        await x.delete()
+                    except Exception:
+                        pass
+                try:
+                    await k.edit_text(f"<b>Aww 😌 <u>{timer_str}</u> pure ho gaye baby!\n\nCopyright security ke liye aapki saari files delete kar di gayi hain. Agar save nahi ki thi toh dubara Send All kar lena cutie 😏</b>")
+                except Exception:
+                    pass
             return
         files_ = await get_file_details(file_id)           
         if not files_:
@@ -463,11 +478,23 @@ async def start(client, message):
             reply_markup=reply_markup
         )
         if await db.get_setting("AUTO_FILE_DELETE", default=AUTO_FILE_DELETE):
-            del_msg=await message.reply("<b>⚠️ᴛʜɪs ғɪʟᴇ ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ 10 ᴍɪɴᴜᴛᴇs\n\nᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇ ғɪʟᴇ sᴏᴍᴇᴡʜᴇʀᴇ ʙᴇғᴏʀᴇ ᴅᴏᴡɴʟᴏᴀᴅɪɴɢ..</b>") 
+            timer_sec = await get_file_auto_delete_timer()
+            timer_str = format_duration(timer_sec)
+            del_msg = await message.reply(
+                f"<b>⚠️ <u>IMPORTANT COPYRIGHT NOTICE</u> ⚠️\n\n"
+                f"Ye movie file <b>{timer_str}</b> me automatically delete ho jayegi meri jaan 😏\n\n"
+                f"<i>Please jaldi se ise apne <u>Saved Messages</u> me forward kar lo baby aur wahan se download shuru karo!</i> 🍿</b>"
+            )
             Lootere = msg
-            await asyncio.sleep(900)
-            await Lootere.delete() 
-            await del_msg.edit_text("<b>ʏᴏᴜʀ ғɪʟᴇ ᴡᴀs ᴅᴇʟᴇᴛᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ ᴀғᴛᴇʀ 10 ᴍɪɴᴜᴛᴇs ᴛᴏ ᴀᴠᴏɪᴅ ᴄᴏᴘʏʀɪɢʜᴛ 📢</b>")
+            await asyncio.sleep(timer_sec)
+            try:
+                await Lootere.delete()
+            except Exception:
+                pass
+            try:
+                await del_msg.edit_text(f"<b>Aww 😌 <u>{timer_str}</u> pure ho gaye baby!\n\nCopyright protection ke liye aapki requested file delete kar di gayi hai. Agar nahi save ki thi toh dubara search kar lo meri jaan 😏</b>")
+            except Exception:
+                pass
     except Exception as e:
         await message.reply(f"{e}")
         
@@ -653,8 +680,8 @@ async def settings(client, message):
                 InlineKeyboardButton('✔ Oɴ' if settings["welcome"] else '✘ Oғғ',callback_data=f'setgs#welcome#{settings["welcome"]}#{grp_id}',),
             ],
             [
-                InlineKeyboardButton('Aᴜᴛᴏ-Dᴇʟᴇᴛᴇ', callback_data=f'setgs#auto_delete#{settings["auto_delete"]}#{grp_id}',),
-                InlineKeyboardButton('10 Mɪɴs' if settings["auto_delete"] else '✘ Oғғ', callback_data=f'setgs#auto_delete#{settings["auto_delete"]}#{grp_id}',),
+                InlineKeyboardButton('Aᴜᴛᴏ-Dᴇʟᴇᴛᴇ', callback_data=f'setgs#auto_delete#{settings.get("auto_delete", True)}#{grp_id}',),
+                InlineKeyboardButton(f'{format_duration(settings.get("auto_delete_timer", 600))}' if settings.get("auto_delete", True) else '✘ Oғғ', callback_data=f'setgs#auto_delete#{settings.get("auto_delete", True)}#{grp_id}',),
             ],
             [
                 InlineKeyboardButton('Aᴜᴛᴏ-Fɪʟᴛᴇʀ', callback_data=f'setgs#auto_ffilter#{settings["auto_ffilter"]}#{grp_id}',),
@@ -1454,3 +1481,72 @@ async def set_mode(client, message):
             await message.reply("Please specify the mode name and 'True' or 'False' as arguments. Example: /set_value PM_FILTER True")
     except Exception as e:
         await message.reply(f"An error occurred: {e}")
+
+
+@Client.on_message(filters.command(['set_timer', 'set_delete_timer']))
+async def set_delete_timer_cmd(client, message):
+    chat_type = message.chat.type
+    is_bot_admin = message.from_user.id in ADMINS or str(message.from_user.id) in ADMINS
+
+    args = message.text.split()[1:]
+    if not args:
+        return await message.reply_text(
+            "<b>Timer to batao meri jaan 😏\n\n"
+            "Format: <code>/set_timer &lt;duration&gt;</code>\n\n"
+            "Examples:\n"
+            "• <code>/set_timer 5m</code> (5 Minutes)\n"
+            "• <code>/set_timer 10m</code> (10 Minutes)\n"
+            "• <code>/set_timer 15m</code> (15 Minutes)\n"
+            "• <code>/set_timer 30m</code> (30 Minutes)\n"
+            "• <code>/set_timer 1h</code> (1 Hour)\n"
+            "• <code>/set_timer 600</code> (Seconds)</b>"
+        )
+
+    duration_sec = parse_duration(args[0])
+    formatted_time = format_duration(duration_sec)
+
+    if chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+        grp_id = message.chat.id
+        user = await client.get_chat_member(message.chat.id, message.from_user.id)
+        owner = user.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER] or is_bot_admin
+        if not owner:
+            return await message.reply_text('<b>ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴅᴍɪɴ ɪɴ ᴛʜɪꜱ ɢʀᴏᴜᴘ</b>')
+        
+        await save_group_settings(grp_id, 'auto_delete_timer', duration_sec)
+        await save_group_settings(grp_id, 'auto_delete', True)
+        return await message.reply_text(
+            f"<b>Haan baby 😏 Is group ke search results ka auto-delete timer <u>{formatted_time}</u> set ho gaya!\n\n"
+            f"Ab koi bhi movie search result {formatted_time} baad copyright aur spam protection ke liye automatically delete ho jayega 😌</b>"
+        )
+    else:
+        # Private Message -> Global movie file auto-delete timer for Bot Admins
+        if not is_bot_admin:
+            return await message.reply_text("<b>Sirf bot admin hi global movie files auto-delete timer set kar sakte hain meri jaan 😏</b>")
+        
+        await db.set_setting("FILE_AUTO_DELETE_TIMER", duration_sec)
+        await db.set_setting("AUTO_FILE_DELETE", True)
+        return await message.reply_text(
+            f"<b>Done darling 😏 Global movie files auto-delete timer <u>{formatted_time}</u> par lock kar diya hai!\n\n"
+            f"Ab PM me deliver hui files {formatted_time} baad automatically delete ho jayengi copyright protection ke liye! 🛡️</b>"
+        )
+
+
+@Client.on_message(filters.command(['get_timer', 'delete_timer']))
+async def get_delete_timer_cmd(client, message):
+    chat_type = message.chat.type
+    grp_id = message.chat.id if chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP] else 0
+
+    grp_timer = await get_auto_delete_timer(grp_id) if grp_id else None
+    file_timer = await get_file_auto_delete_timer()
+
+    text = "<b>⏱️ <u>RKMOVIESZIP Auto-Delete Timers</u> ⏱️</b>\n\n"
+    if grp_id:
+        settings = await get_settings(grp_id)
+        status = "✔ Oɴ" if settings.get("auto_delete", True) else "✘ Oғғ"
+        text += f"• <b>Group Results Cleanup:</b> <code>{format_duration(grp_timer)}</code> ({status})\n"
+    
+    file_status = "✔ Oɴ" if await db.get_setting("AUTO_FILE_DELETE", default=AUTO_FILE_DELETE) else "✘ Oғғ"
+    text += f"• <b>PM Movie Files Cleanup:</b> <code>{format_duration(file_timer)}</code> ({file_status})\n\n"
+    text += "<i>Change karne ke liye: <code>/set_timer 5m</code>, <code>10m</code>, <code>15m</code>, <code>30m</code> ya <code>1h</code></i> 😏"
+    await message.reply_text(text)
+

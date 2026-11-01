@@ -752,3 +752,82 @@ async def get_text(settings, remaining_seconds, files, query, total_results, sea
     except Exception as e:
         await query.answer(f"{e}", show_alert=True)
         return cap
+
+
+def parse_duration(time_str: str) -> int:
+    """
+    Parse a duration string like '5m', '10m', '15m', '30m', '1h', '600s', '600' into integer seconds.
+    Supports minimum 10 seconds and maximum 86400 seconds (24 hours).
+    """
+    if not time_str:
+        return 600
+    time_str = str(time_str).strip().lower()
+    try:
+        if time_str.endswith(('m', 'min', 'mins')):
+            val = re.sub(r'[^0-9\.]', '', time_str)
+            return max(10, min(86400, int(float(val) * 60)))
+        elif time_str.endswith(('h', 'hr', 'hrs', 'hours', 'hour')):
+            val = re.sub(r'[^0-9\.]', '', time_str)
+            return max(10, min(86400, int(float(val) * 3600)))
+        elif time_str.endswith(('s', 'sec', 'secs', 'second', 'seconds')):
+            val = re.sub(r'[^0-9\.]', '', time_str)
+            return max(10, min(86400, int(float(val))))
+        else:
+            return max(10, min(86400, int(float(time_str))))
+    except Exception:
+        return 600
+
+
+def format_duration(seconds: int) -> str:
+    """
+    Format seconds into a clean human-readable text label:
+    e.g. 300 -> '5 Mɪɴs', 600 -> '10 Mɪɴs', 900 -> '15 Mɪɴs', 1800 -> '30 Mɪɴs', 3600 -> '1 Hᴏᴜʀ'
+    """
+    try:
+        seconds = int(seconds)
+    except Exception:
+        return "10 Mɪɴs"
+
+    if seconds >= 3600:
+        hrs = seconds // 3600
+        mins = (seconds % 3600) // 60
+        if mins > 0:
+            return f"{hrs}h {mins}m"
+        return f"{hrs} Hᴏᴜʀ" if hrs == 1 else f"{hrs} Hᴏᴜʀs"
+    elif seconds >= 60:
+        mins = seconds // 60
+        secs = seconds % 60
+        if secs > 0:
+            return f"{mins}m {secs}s"
+        return f"{mins} Mɪɴs"
+    else:
+        return f"{seconds} Sᴇᴄs"
+
+
+async def get_auto_delete_timer(grp_id: int = 0) -> int:
+    """
+    Returns group auto-delete timer in seconds.
+    """
+    if grp_id:
+        try:
+            settings = await get_settings(int(grp_id))
+            timer = settings.get("auto_delete_timer")
+            if timer:
+                return int(timer)
+        except Exception:
+            pass
+    return int(globals().get("AUTO_DELETE_TIMER", 600))
+
+
+async def get_file_auto_delete_timer() -> int:
+    """
+    Returns global PM file auto-delete timer in seconds.
+    """
+    try:
+        timer = await db.get_setting("FILE_AUTO_DELETE_TIMER", default=None)
+        if timer:
+            return int(timer)
+    except Exception:
+        pass
+    return int(globals().get("FILE_AUTO_DELETE_TIMER", 900))
+

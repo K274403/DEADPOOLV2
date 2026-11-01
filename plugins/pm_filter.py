@@ -19,7 +19,7 @@ from info import *
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto, InputMediaVideo
 from pyrogram import Client, filters, enums
 from pyrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerIdInvalid
-from utils import get_size, is_subscribed, get_poster, temp, get_settings, save_group_settings, get_shortlink, stream_site, get_text, imdb, clean_file_name, sort_files_season_first, sort_files, make_search_filter_buttons, extract_year, is_file_locked, format_file_button_label
+from utils import get_size, is_subscribed, get_poster, temp, get_settings, save_group_settings, get_shortlink, stream_site, get_text, imdb, clean_file_name, sort_files_season_first, sort_files, make_search_filter_buttons, extract_year, is_file_locked, format_file_button_label, format_duration, parse_duration, get_auto_delete_timer
 from database.users_chats_db import db
 from database.Lootere_reffer import sdb
 from database.ia_filterdb import Media, get_file_details, get_search_results, get_bad_files
@@ -1351,9 +1351,9 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 ],
                 [
                     InlineKeyboardButton('Aᴜᴛᴏ-Dᴇʟᴇᴛᴇ',
-                                         callback_data=f'setgs#auto_delete#{settings["auto_delete"]}#{str(grp_id)}'),
-                    InlineKeyboardButton('10 Mɪɴs' if settings["auto_delete"] else '✘ Oғғ',
-                                         callback_data=f'setgs#auto_delete#{settings["auto_delete"]}#{str(grp_id)}')
+                                         callback_data=f'setgs#auto_delete#{settings.get("auto_delete", True)}#{str(grp_id)}'),
+                    InlineKeyboardButton(f'{format_duration(settings.get("auto_delete_timer", 600))}' if settings.get("auto_delete", True) else '✘ Oғғ',
+                                         callback_data=f'setgs#auto_delete#{settings.get("auto_delete", True)}#{str(grp_id)}')
                 ],
                 [
                     InlineKeyboardButton('Aᴜᴛᴏ-Fɪʟᴛᴇʀ',
@@ -1439,9 +1439,9 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 ],
                 [
                     InlineKeyboardButton('Aᴜᴛᴏ-Dᴇʟᴇᴛᴇ',
-                                         callback_data=f'setgs#auto_delete#{settings["auto_delete"]}#{str(grp_id)}'),
-                    InlineKeyboardButton('10 Mɪɴs' if settings["auto_delete"] else '✘ Oғғ',
-                                         callback_data=f'setgs#auto_delete#{settings["auto_delete"]}#{str(grp_id)}')
+                                         callback_data=f'setgs#auto_delete#{settings.get("auto_delete", True)}#{str(grp_id)}'),
+                    InlineKeyboardButton(f'{format_duration(settings.get("auto_delete_timer", 600))}' if settings.get("auto_delete", True) else '✘ Oғғ',
+                                         callback_data=f'setgs#auto_delete#{settings.get("auto_delete", True)}#{str(grp_id)}')
                 ],
                 [
                     InlineKeyboardButton('Aᴜᴛᴏ-Fɪʟᴛᴇʀ',
@@ -1840,7 +1840,22 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.message.edit("Yᴏᴜʀ Aᴄᴛɪᴠᴇ Cᴏɴɴᴇᴄᴛɪᴏɴ Hᴀs Bᴇᴇɴ Cʜᴀɴɢᴇᴅ. Gᴏ Tᴏ /connections ᴀɴᴅ ᴄʜᴀɴɢᴇ ʏᴏᴜʀ ᴀᴄᴛɪᴠᴇ ᴄᴏɴɴᴇᴄᴛɪᴏɴ.")
             return await query.answer(MSG_ALRT)
 
-        if status == "True":
+        cur_settings = await get_settings(grpid)
+        if set_type == "auto_delete":
+            is_on = cur_settings.get("auto_delete", True)
+            cur_timer = cur_settings.get("auto_delete_timer", 600)
+            if not is_on:
+                await save_group_settings(grpid, "auto_delete", True)
+                await save_group_settings(grpid, "auto_delete_timer", 300)
+            elif cur_timer <= 300:
+                await save_group_settings(grpid, "auto_delete_timer", 600)
+            elif cur_timer <= 600:
+                await save_group_settings(grpid, "auto_delete_timer", 900)
+            elif cur_timer <= 900:
+                await save_group_settings(grpid, "auto_delete_timer", 1800)
+            else:
+                await save_group_settings(grpid, "auto_delete", False)
+        elif status == "True":
             await save_group_settings(grpid, set_type, False)
         else:
             await save_group_settings(grpid, set_type, True)
@@ -1873,9 +1888,9 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 ],
                 [
                     InlineKeyboardButton('Aᴜᴛᴏ-Dᴇʟᴇᴛᴇ',
-                                         callback_data=f'setgs#auto_delete#{settings["auto_delete"]}#{str(grp_id)}'),
-                    InlineKeyboardButton('10 Mɪɴs' if settings["auto_delete"] else '✘ Oғғ',
-                                         callback_data=f'setgs#auto_delete#{settings["auto_delete"]}#{str(grp_id)}')
+                                         callback_data=f'setgs#auto_delete#{settings.get("auto_delete", True)}#{str(grp_id)}'),
+                    InlineKeyboardButton(f'{format_duration(settings.get("auto_delete_timer", 600))}' if settings.get("auto_delete", True) else '✘ Oғғ',
+                                         callback_data=f'setgs#auto_delete#{settings.get("auto_delete", True)}#{str(grp_id)}')
                 ],
                 [
                     InlineKeyboardButton('Aᴜᴛᴏ-Fɪʟᴛᴇʀ',
@@ -2092,57 +2107,63 @@ async def auto_filter(client, msg, spoll=False):
             try:
                 hehe = await message.reply_photo(photo=imdb.get('poster'), caption=cap, reply_markup=InlineKeyboardMarkup(btn))
                 await m.delete()
-                try:
-                    if settings['auto_delete']:
-                        await asyncio.sleep(600)
+                if settings.get('auto_delete', True):
+                    del_timer = settings.get("auto_delete_timer", 600)
+                    await asyncio.sleep(del_timer)
+                    try:
                         await hehe.delete()
+                    except Exception:
+                        pass
+                    try:
                         await message.delete()
-                except KeyError:
-                    await save_group_settings(message.chat.id, 'auto_delete', True)
-                    await asyncio.sleep(600)
-                    await hehe.delete()
-                    await message.delete()
+                    except Exception:
+                        pass
             except (MediaEmpty, PhotoInvalidDimensions, WebpageMediaEmpty):
                 pic = imdb.get('poster')
                 poster = pic.replace('.jpg', "._V1_UX360.jpg")
                 hmm = await message.reply_photo(photo=poster, caption=cap, reply_markup=InlineKeyboardMarkup(btn))
-                try:
-                    if settings['auto_delete']:
-                        await asyncio.sleep(600)
+                if settings.get('auto_delete', True):
+                    del_timer = settings.get("auto_delete_timer", 600)
+                    await asyncio.sleep(del_timer)
+                    try:
                         await hmm.delete()
+                    except Exception:
+                        pass
+                    try:
                         await message.delete()
-                except KeyError:
-                    await save_group_settings(message.chat.id, 'auto_delete', True)
-                    await asyncio.sleep(600)
-                    await hmm.delete()
-                    await message.delete()
+                    except Exception:
+                        pass
             except Exception as e:
                 logger.exception(e)
                 fek = await message.reply_text(text=cap, reply_markup=InlineKeyboardMarkup(btn))
-                try:
-                    if settings['auto_delete']:
-                        await asyncio.sleep(600)
+                if settings.get('auto_delete', True):
+                    del_timer = settings.get("auto_delete_timer", 600)
+                    await asyncio.sleep(del_timer)
+                    try:
                         await fek.delete()
+                    except Exception:
+                        pass
+                    try:
                         await message.delete()
-                except KeyError:
-                    await save_group_settings(message.chat.id, 'auto_delete', True)
-                    await asyncio.sleep(600)
-                    await fek.delete()
-                    await message.delete()
+                    except Exception:
+                        pass
         else:
             fuk = await message.reply_text(text=cap, reply_markup=InlineKeyboardMarkup(btn))
-            await message.delete()
-            await m.delete()
             try:
-                if settings['auto_delete']:
-                    await asyncio.sleep(600)
-                    await fuk.delete()
-                    await message.delete()
-            except KeyError:
-                await save_group_settings(message.chat.id, 'auto_delete', True)
-                await asyncio.sleep(600)
-                await fuk.delete()
                 await message.delete()
+            except Exception:
+                pass
+            try:
+                await m.delete()
+            except Exception:
+                pass
+            if settings.get('auto_delete', True):
+                del_timer = settings.get("auto_delete_timer", 600)
+                await asyncio.sleep(del_timer)
+                try:
+                    await fuk.delete()
+                except Exception:
+                    pass
         if spoll:
             await msg.message.delete()
     except Exception as e:
